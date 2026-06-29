@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -23,6 +23,13 @@ class CuentaResponse(CuentaBase):
     ultimo_acceso: Optional[datetime]
     fecha_creacion: datetime
     fecha_actualizacion: datetime
+
+    @field_validator('uuid', mode='before')
+    @classmethod
+    def parse_uuid(cls, v):
+        if isinstance(v, bytes):
+            return v.hex()
+        return v
 
     class Config:
         from_attributes = True

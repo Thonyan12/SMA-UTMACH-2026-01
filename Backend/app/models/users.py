@@ -16,7 +16,7 @@ class Cuenta(Base):
     fecha_actualizacion = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     perfil = relationship("Perfil", back_populates="cuenta", uselist=False)
-    roles = relationship("CuentaRol", back_populates="cuenta")
+    roles = relationship("CuentaRol", foreign_keys="[CuentaRol.cuenta_id]", back_populates="cuenta")
 
 class Rol(Base):
     __tablename__ = "roles"
