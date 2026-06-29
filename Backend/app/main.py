@@ -3,15 +3,22 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
 
-from app.routers import catalogs, users, academic, actors, processes
+from app.routers import catalogs, users, academic, actors, processes, auth
+from app.core.dependencies import get_current_user
 
 app = FastAPI()
 
-app.include_router(catalogs.router, prefix="/api/catalogs", tags=["Catálogos"])
-app.include_router(users.router, prefix="/api/users", tags=["Cuentas y Usuarios"])
-app.include_router(academic.router, prefix="/api/academic", tags=["Gestión Académica"])
-app.include_router(actors.router, prefix="/api/actors", tags=["Actores (Mentores/Estudiantes)"])
-app.include_router(processes.router, prefix="/api/processes", tags=["Procesos de Mentoría"])
+# Auth (público)
+app.include_router(auth.router, prefix="/api/auth", tags=["Autenticación"])
+
+# Rutas protegidas (requieren token Bearer)
+protected_dependency = [Depends(get_current_user)]
+
+app.include_router(catalogs.router, prefix="/api/catalogs", tags=["Catálogos"], dependencies=protected_dependency)
+app.include_router(users.router, prefix="/api/users", tags=["Cuentas y Usuarios"], dependencies=protected_dependency)
+app.include_router(academic.router, prefix="/api/academic", tags=["Gestión Académica"], dependencies=protected_dependency)
+app.include_router(actors.router, prefix="/api/actors", tags=["Actores (Mentores/Estudiantes)"], dependencies=protected_dependency)
+app.include_router(processes.router, prefix="/api/processes", tags=["Procesos de Mentoría"], dependencies=protected_dependency)
 
 @app.get("/")
 def root():
