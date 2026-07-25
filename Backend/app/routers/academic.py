@@ -49,9 +49,9 @@ def delete_facultad(id: int, db: Session = Depends(get_db)):
     db_item = db.query(Facultad).filter(Facultad.id == id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Facultad no encontrada")
-    db.delete(db_item)
+    db_item.estado = 0 # Soft Delete
     db.commit()
-    return {"message": "Eliminado exitosamente"}
+    return {"message": "Eliminado (Soft Delete) exitosamente"}
 
 
 # ==========================================
@@ -86,9 +86,9 @@ def delete_carrera(id: int, db: Session = Depends(get_db)):
     db_item = db.query(Carrera).filter(Carrera.id == id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Carrera no encontrada")
-    db.delete(db_item)
+    db_item.estado = 0 # Soft Delete
     db.commit()
-    return {"message": "Eliminado exitosamente"}
+    return {"message": "Eliminado (Soft Delete) exitosamente"}
 
 
 # ==========================================
@@ -123,9 +123,9 @@ def delete_materia(id: int, db: Session = Depends(get_db)):
     db_item = db.query(Materia).filter(Materia.id == id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Materia no encontrada")
-    db.delete(db_item)
+    db_item.estado = 0 # Soft Delete
     db.commit()
-    return {"message": "Eliminado exitosamente"}
+    return {"message": "Eliminado (Soft Delete) exitosamente"}
 
 
 # ==========================================
@@ -234,6 +234,6 @@ def delete_facultad_director(id: int, db: Session = Depends(get_db)):
     db_item = db.query(FacultadDirector).filter(FacultadDirector.id == id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Director de facultad no encontrado")
-    db.delete(db_item)
+    db_item.estado = 0 # Soft Delete
     db.commit()
-    return {"message": "Eliminado exitosamente"}
+    return {"message": "Eliminado (Soft Delete) exitosamente"}

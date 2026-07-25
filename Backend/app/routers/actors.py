@@ -48,9 +48,9 @@ def delete_estudiante(id: int, db: Session = Depends(get_db)):
     db_item = db.query(Estudiante).filter(Estudiante.id == id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Estudiante no encontrado")
-    db.delete(db_item)
+    db_item.estado = 0 # Soft Delete
     db.commit()
-    return {"message": "Eliminado exitosamente"}
+    return {"message": "Eliminado (Soft Delete) exitosamente"}
 
 
 # ==========================================
@@ -92,9 +92,9 @@ def delete_mentor(id: int, db: Session = Depends(get_db)):
     db_item = db.query(Mentor).filter(Mentor.id == id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Mentor no encontrado")
-    db.delete(db_item)
+    db_item.estado = 0 # Soft Delete
     db.commit()
-    return {"message": "Eliminado exitosamente"}
+    return {"message": "Eliminado (Soft Delete) exitosamente"}
 
 
 # ==========================================

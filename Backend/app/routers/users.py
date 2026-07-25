@@ -45,9 +45,9 @@ def delete_cuenta(id: int, db: Session = Depends(get_db)):
     db_item = db.query(Cuenta).filter(Cuenta.id == id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
-    db.delete(db_item)
+    db_item.estado = 0 # Soft Delete
     db.commit()
-    return {"message": "Eliminado exitosamente"}
+    return {"message": "Eliminado (Soft Delete) exitosamente"}
 
 
 # ==========================================
@@ -82,9 +82,9 @@ def delete_rol(id: int, db: Session = Depends(get_db)):
     db_item = db.query(Rol).filter(Rol.id == id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Rol no encontrado")
-    db.delete(db_item)
+    db_item.estado = 0 # Soft Delete
     db.commit()
-    return {"message": "Eliminado exitosamente"}
+    return {"message": "Eliminado (Soft Delete) exitosamente"}
 
 
 # ==========================================
@@ -119,9 +119,9 @@ def delete_cuenta_rol(id: int, db: Session = Depends(get_db)):
     db_item = db.query(CuentaRol).filter(CuentaRol.id == id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Relación no encontrada")
-    db.delete(db_item)
+    db_item.estado = 0 # Soft Delete
     db.commit()
-    return {"message": "Eliminado exitosamente"}
+    return {"message": "Eliminado (Soft Delete) exitosamente"}
 
 
 # ==========================================
@@ -156,6 +156,6 @@ def delete_perfil(id: int, db: Session = Depends(get_db)):
     db_item = db.query(Perfil).filter(Perfil.id == id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Perfil no encontrado")
-    db.delete(db_item)
+    db_item.estado = 0 # Soft Delete
     db.commit()
-    return {"message": "Eliminado exitosamente"}
+    return {"message": "Eliminado (Soft Delete) exitosamente"}
