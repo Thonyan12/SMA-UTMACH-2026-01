@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { FaVideo, FaTrashAlt, FaSpinner } from 'react-icons/fa';
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const Agenda = () => {
   const { user } = useContext(AuthContext);
@@ -61,10 +62,11 @@ const Agenda = () => {
     if (!window.confirm('¿Estás seguro de que deseas cancelar esta sesión?')) return;
     try {
       await api.delete(`/processes/sesiones-mentoria/${id}`);
+      toast.success('Sesión cancelada');
       fetchData();
     } catch (error) {
       console.error('Error cancelando sesión:', error);
-      alert('Error al cancelar la sesión.');
+      toast.error('Error al cancelar la sesión.');
     }
   };
 
@@ -108,8 +110,10 @@ const Agenda = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
         {loading ? (
-          <div style={{ gridColumn: '1 / -1', padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <FaSpinner className="fa-spin" style={{ marginRight: '8px' }} /> Cargando agenda...
+          <div style={{ gridColumn: '1 / -1', padding: '40px', textAlign: 'center' }}>
+            <div className="spinner-container">
+              <div className="spinner"></div>
+            </div>
           </div>
         ) : sesiones.length === 0 ? (
           <div className="card-panel" style={{ gridColumn: '1 / -1', padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>

@@ -125,9 +125,9 @@ const Login = () => {
             type="submit" 
             className="btn-primary" 
             disabled={isLoading}
-            style={{ marginTop: '8px', width: '100%', padding: '12px', fontSize: '1rem' }}
+            style={{ marginTop: '8px', width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}
           >
-            {isLoading ? 'Iniciando sesión...' : 'Ingresar'}
+            {isLoading ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '2px', borderColor: 'white', borderTopColor: 'transparent' }}></span> : 'Ingresar'}
           </button>
         </form>
       </div>

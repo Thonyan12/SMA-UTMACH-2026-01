@@ -1,11 +1,13 @@
 import React, { useContext } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { FaHome, FaCalendarAlt, FaUserGraduate, FaSignOutAlt, FaClipboardList } from 'react-icons/fa';
+import { FaHome, FaCalendarAlt, FaUserGraduate, FaSignOutAlt, FaClipboardList, FaBars, FaTimes } from 'react-icons/fa';
+import { Toaster } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 
 const Layout = () => {
   const location = useLocation();
   const { user, logout } = useContext(AuthContext);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const isAdmin = user?.roles?.includes('administrador');
   const isEstudiante = user?.roles?.includes('estudiante');
@@ -33,16 +35,27 @@ const Layout = () => {
   const menuItems = getMenuItems();
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
+    <div className="layout-container" style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
+      <Toaster position="top-right" />
+      
       {/* Sidebar Sobrio e Institucional */}
-      <aside style={{ 
+      <aside className={`sidebar ${!isMobileMenuOpen ? 'hide-on-mobile' : ''}`} style={{ 
         width: '250px', 
         backgroundColor: 'var(--bg-primary)', 
         borderRight: '1px solid var(--border-color)',
         display: 'flex',
         flexDirection: 'column'
       }}>
-        <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+          {isMobileMenuOpen && (
+            <button 
+              className="hide-on-desktop"
+              style={{ position: 'absolute', right: '16px', top: '16px', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-secondary)' }}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <FaTimes />
+            </button>
+          )}
           <img src="/logo-horizontal-300x99.png" alt="UTMACH Logo" style={{ width: '100%', maxWidth: '180px', marginBottom: '8px' }} />
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '500' }}>
             Sistema de Mentorías
@@ -114,16 +127,25 @@ const Layout = () => {
       </aside>
 
       {/* Main Content Area */}
-      <main style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        <header style={{ 
+      <main style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <header className="header-content" style={{ 
           height: '70px', 
           backgroundColor: 'var(--bg-primary)', 
           borderBottom: '1px solid var(--border-color)',
           display: 'flex',
           alignItems: 'center',
           padding: '0 32px',
-          justifyContent: 'flex-end'
+          justifyContent: 'space-between'
         }}>
+          <div>
+            <button 
+              className="hide-on-desktop"
+              style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--accent-primary)', display: 'none' /* Will be overridden by media query if needed, but we can just conditionally render or use CSS */ }}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              <FaBars />
+            </button>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ textAlign: 'right' }}>
               <p style={{ margin: 0, fontWeight: '600', fontSize: '0.95rem', color: 'var(--text-primary)' }}>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { FaPlus, FaCheck, FaTimes, FaSpinner, FaUserCircle } from 'react-icons/fa';
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const Solicitudes = () => {
   const { user } = useContext(AuthContext);
@@ -158,10 +159,11 @@ const Solicitudes = () => {
       setShowModal(false);
       setFormData({ materia_id: '', descripcion: '', fecha_hora_deseada: '', prioridad: 'media' });
       setDatetimeError('');
+      toast.success('Solicitud creada con éxito');
       fetchData();
     } catch (error) {
       console.error('Error creating solicitud:', error);
-      alert('Error al crear la solicitud.');
+      toast.error('Error al crear la solicitud.');
     } finally {
       setSubmitting(false);
     }
@@ -170,10 +172,11 @@ const Solicitudes = () => {
   const handleUpdateState = async (id, nuevoEstado) => {
     try {
       await api.put(`/processes/solicitudes-mentoria/${id}`, { estado_solicitud: nuevoEstado });
+      toast.success('Estado actualizado correctamente');
       fetchData();
     } catch (error) {
       console.error('Error actualizando solicitud:', error);
-      alert('Error al actualizar el estado de la solicitud.');
+      toast.error('Error al actualizar el estado de la solicitud.');
     }
   };
 
@@ -219,8 +222,8 @@ const Solicitudes = () => {
         )}
       </div>
 
-      <div className="card-panel">
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+      <div className="card-panel table-responsive">
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
               {user?.roles?.includes('administrador') && <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>ID</th>}
@@ -235,7 +238,9 @@ const Solicitudes = () => {
             {loading ? (
               <tr>
                 <td colSpan={user?.roles?.includes('administrador') ? "6" : "5"} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  <FaSpinner className="fa-spin" style={{ marginRight: '8px' }} /> Cargando solicitudes...
+                  <div className="spinner-container">
+                    <div className="spinner"></div>
+                  </div>
                 </td>
               </tr>
             ) : solicitudes.length === 0 ? (
@@ -499,7 +504,7 @@ const Solicitudes = () => {
                   Cancelar
                 </button>
                 <button type="submit" className="btn-primary" disabled={submitting || obscenityError !== '' || datetimeError !== ''}>
-                  {submitting ? 'Enviando...' : 'Crear Solicitud'}
+                  {submitting ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '2px', borderColor: 'white', borderTopColor: 'transparent' }}></span> : 'Crear Solicitud'}
                 </button>
               </div>
               </form>

@@ -140,7 +140,7 @@ const Home = () => {
           <div>
             <h3 style={{ fontSize: '1.1rem', margin: '0 0 4px 0', color: 'var(--text-secondary)' }}>Mentores Activos</h3>
             <p style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>
-              {loading ? '...' : stats.mentores}
+              {loading ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '3px' }}></span> : stats.mentores}
             </p>
           </div>
         </div>
@@ -152,7 +152,7 @@ const Home = () => {
           <div>
             <h3 style={{ fontSize: '1.1rem', margin: '0 0 4px 0', color: 'var(--text-secondary)' }}>Total de Sesiones</h3>
             <p style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>
-              {loading ? '...' : stats.sesiones}
+              {loading ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '3px' }}></span> : stats.sesiones}
             </p>
           </div>
         </div>
@@ -164,7 +164,7 @@ const Home = () => {
           <div>
             <h3 style={{ fontSize: '1.1rem', margin: '0 0 4px 0', color: 'var(--text-secondary)' }}>Solicitudes Pendientes</h3>
             <p style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>
-              {loading ? '...' : stats.solicitudes}
+              {loading ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '3px' }}></span> : stats.solicitudes}
             </p>
           </div>
         </div>
@@ -175,8 +175,8 @@ const Home = () => {
       <h2 style={{ fontSize: '1.4rem', marginBottom: '20px' }}>
         {isEstudiante ? 'Mis actividades recientes' : 'Actividad Reciente'}
       </h2>
-      <div className="card-panel">
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+      <div className="card-panel table-responsive">
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
               {isAdmin && <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Solicitud ID</th>}
@@ -190,7 +190,11 @@ const Home = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={isAdmin ? "6" : "5"} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando actividad...</td>
+                <td colSpan={isAdmin ? "6" : "5"} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <div className="spinner-container">
+                    <div className="spinner"></div>
+                  </div>
+                </td>
               </tr>
             ) : actividad.length === 0 ? (
               <tr>
