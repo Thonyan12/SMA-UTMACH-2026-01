@@ -4,6 +4,10 @@ import api from '../api/axios';
 
 const Solicitudes = () => {
   const [solicitudes, setSolicitudes] = useState([]);
+  const [materias, setMaterias] = useState([]);
+  const [estudiantes, setEstudiantes] = useState([]);
+  const [perfilesAcademicos, setPerfilesAcademicos] = useState([]);
+  const [perfiles, setPerfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -15,22 +19,49 @@ const Solicitudes = () => {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchSolicitudes = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/processes/solicitudes-mentoria/');
-      // Ordenar por ID descendente para ver las nuevas primero
-      setSolicitudes(response.data.sort((a, b) => b.id - a.id));
+      const [solRes, matRes, estRes, paRes, perfRes] = await Promise.all([
+        api.get('/processes/solicitudes-mentoria/'),
+        api.get('/academic/materias/'),
+        api.get('/actors/estudiantes/'),
+        api.get('/academic/perfiles-academicos/'),
+        api.get('/users/perfiles/') // asumiendo que este es el endpoint para perfiles
+      ]);
+      
+      setSolicitudes(solRes.data.sort((a, b) => b.id - a.id));
+      setMaterias(matRes.data);
+      setEstudiantes(estRes.data);
+      setPerfilesAcademicos(paRes.data);
+      setPerfiles(perfRes.data);
     } catch (error) {
-      console.error('Error fetching solicitudes:', error);
+      console.error('Error fetching data for solicitudes:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSolicitudes();
+    fetchData();
   }, []);
+
+  // Funciones de mapeo
+  const getMateriaName = (id) => {
+    const mat = materias.find(m => m.id === id);
+    return mat ? mat.nombre : `Materia Desconocida`;
+  };
+
+  const getEstudianteName = (id) => {
+    const est = estudiantes.find(e => e.id === id);
+    if (!est) return `Estudiante Desconocido`;
+    
+    const pa = perfilesAcademicos.find(pa => pa.id === est.academico_id);
+    if (!pa) return `Perfil Académico Desconocido`;
+
+    const perf = perfiles.find(p => p.id === pa.perfil_id);
+    return perf ? `${perf.nombres} ${perf.apellidos}` : `Perfil Desconocido`;
+  };
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -44,7 +75,8 @@ const Solicitudes = () => {
       };
       await api.post('/processes/solicitudes-mentoria/', payload);
       setShowModal(false);
-      fetchSolicitudes(); // Recargar lista
+      fetchData(); // Recargar lista completa
+
     } catch (error) {
       console.error('Error creating solicitud:', error);
       alert('Error al crear la solicitud. Revisa la consola.');
@@ -56,7 +88,7 @@ const Solicitudes = () => {
   const handleUpdateState = async (id, nuevoEstado) => {
     try {
       await api.put(`/processes/solicitudes-mentoria/${id}`, { estado_solicitud: nuevoEstado });
-      fetchSolicitudes();
+      fetchData();
     } catch (error) {
       console.error('Error actualizando solicitud:', error);
       alert('Error al actualizar el estado de la solicitud.');
@@ -116,10 +148,10 @@ const Solicitudes = () => {
             ) : (
               solicitudes.map((sol) => (
                 <tr key={sol.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '16px 24px' }}>#{sol.id}</td>
+                  <td style={{ padding: '16px 24px', fontWeight: '500' }}>{sol.id}</td>
                   <td style={{ padding: '16px 24px' }}>
-                    <div style={{ fontWeight: '500' }}>EST-{sol.estudiante_id}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>MAT-{sol.materia_id}</div>
+                    <div style={{ fontWeight: '500' }}>{getEstudianteName(sol.estudiante_id)}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--accent-primary)' }}>{getMateriaName(sol.materia_id)}</div>
                   </td>
                   <td style={{ padding: '16px 24px', maxWidth: '300px' }}>
                     <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

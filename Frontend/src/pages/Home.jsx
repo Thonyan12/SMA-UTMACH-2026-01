@@ -5,20 +5,33 @@ import api from '../api/axios';
 const Home = () => {
   const [stats, setStats] = useState({ mentores: 0, sesiones: 0, solicitudes: 0 });
   const [actividad, setActividad] = useState([]);
+  const [materias, setMaterias] = useState([]);
+  const [estudiantes, setEstudiantes] = useState([]);
+  const [perfilesAcademicos, setPerfilesAcademicos] = useState([]);
+  const [perfiles, setPerfiles] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [mentoresRes, sesionesRes, solicitudesRes] = await Promise.all([
+        const [mentoresRes, sesionesRes, solicitudesRes, matRes, estRes, paRes, perfRes] = await Promise.all([
           api.get('/actors/mentores/'),
           api.get('/processes/sesiones-mentoria/'),
-          api.get('/processes/solicitudes-mentoria/')
+          api.get('/processes/solicitudes-mentoria/'),
+          api.get('/academic/materias/'),
+          api.get('/actors/estudiantes/'),
+          api.get('/academic/perfiles-academicos/'),
+          api.get('/users/perfiles/')
         ]);
 
         const mentores = mentoresRes.data;
         const sesiones = sesionesRes.data;
         const solicitudes = solicitudesRes.data;
+
+        setMaterias(matRes.data);
+        setEstudiantes(estRes.data);
+        setPerfilesAcademicos(paRes.data);
+        setPerfiles(perfRes.data);
 
         setStats({
           mentores: mentores.length,
@@ -52,6 +65,18 @@ const Home = () => {
       case 'cancelada': return 'var(--text-muted)';
       default: return 'var(--text-primary)';
     }
+  };
+
+  // Funciones de mapeo
+  const getEstudianteName = (id) => {
+    const est = estudiantes.find(e => e.id === id);
+    if (!est) return `Estudiante Desconocido`;
+    
+    const pa = perfilesAcademicos.find(pa => pa.id === est.academico_id);
+    if (!pa) return `Perfil Académico Desconocido`;
+
+    const perf = perfiles.find(p => p.id === pa.perfil_id);
+    return perf ? `${perf.nombres} ${perf.apellidos}` : `Perfil Desconocido`;
   };
 
   return (
@@ -109,7 +134,7 @@ const Home = () => {
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
               <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Solicitud ID</th>
-              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estudiante ID</th>
+              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estudiante</th>
               <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estado</th>
               <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Fecha Creada</th>
             </tr>
@@ -126,10 +151,18 @@ const Home = () => {
             ) : (
               actividad.map((act) => (
                 <tr key={act.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '16px 24px' }}>#{act.id}</td>
-                  <td style={{ padding: '16px 24px' }}>EST-{act.estudiante_id}</td>
+                  <td style={{ padding: '16px 24px', fontWeight: '500' }}>{act.id}</td>
+                  <td style={{ padding: '16px 24px' }}>{getEstudianteName(act.estudiante_id)}</td>
                   <td style={{ padding: '16px 24px' }}>
-                    <span style={{ color: getStatusColor(act.estado_solicitud), fontWeight: '500', textTransform: 'capitalize' }}>
+                    <span style={{ 
+                      color: getStatusColor(act.estado_solicitud), 
+                      fontWeight: '500', 
+                      textTransform: 'capitalize',
+                      backgroundColor: 'var(--bg-secondary)',
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      fontSize: '0.85rem'
+                    }}>
                       {act.estado_solicitud}
                     </span>
                   </td>

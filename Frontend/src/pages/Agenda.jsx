@@ -4,31 +4,49 @@ import api from '../api/axios';
 
 const Agenda = () => {
   const [sesiones, setSesiones] = useState([]);
+  const [solicitudes, setSolicitudes] = useState([]);
+  const [estudiantes, setEstudiantes] = useState([]);
+  const [perfilesAcademicos, setPerfilesAcademicos] = useState([]);
+  const [perfiles, setPerfiles] = useState([]);
+  const [materias, setMaterias] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchSesiones = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/processes/sesiones-mentoria/');
-      // Ordenar cronológicamente ascendente (próximas primero), e ignorar canceladas
-      const activas = response.data.filter(s => s.estado_sesion !== 'cancelada');
+      const [sesRes, solRes, estRes, paRes, perfRes, matRes] = await Promise.all([
+        api.get('/processes/sesiones-mentoria/'),
+        api.get('/processes/solicitudes-mentoria/'),
+        api.get('/actors/estudiantes/'),
+        api.get('/academic/perfiles-academicos/'),
+        api.get('/users/perfiles/'),
+        api.get('/academic/materias/')
+      ]);
+      
+      const activas = sesRes.data.filter(s => s.estado_sesion !== 'cancelada');
       setSesiones(activas.sort((a, b) => new Date(a.inicio) - new Date(b.inicio)));
+      
+      setSolicitudes(solRes.data);
+      setEstudiantes(estRes.data);
+      setPerfilesAcademicos(paRes.data);
+      setPerfiles(perfRes.data);
+      setMaterias(matRes.data);
     } catch (error) {
-      console.error('Error fetching sesiones:', error);
+      console.error('Error fetching agenda data:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSesiones();
+    fetchData();
   }, []);
 
   const handleCancel = async (id) => {
     if (!window.confirm('¿Estás seguro de que deseas cancelar esta sesión?')) return;
     try {
       await api.delete(`/processes/sesiones-mentoria/${id}`);
-      fetchSesiones();
+      fetchData();
     } catch (error) {
       console.error('Error cancelando sesión:', error);
       alert('Error al cancelar la sesión.');
@@ -45,6 +63,25 @@ const Agenda = () => {
     if (!isoString) return 'N/A';
     const date = new Date(isoString);
     return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getSolicitudDetails = (solicitud_id) => {
+    const sol = solicitudes.find(s => s.id === solicitud_id);
+    if (!sol) return { estudiante: 'Desconocido', materia: 'Desconocida' };
+    
+    const mat = materias.find(m => m.id === sol.materia_id);
+    const materiaName = mat ? mat.nombre : 'Materia Desconocida';
+
+    const est = estudiantes.find(e => e.id === sol.estudiante_id);
+    if (!est) return { estudiante: 'Estudiante Desconocido', materia: materiaName };
+
+    const pa = perfilesAcademicos.find(pa => pa.id === est.academico_id);
+    if (!pa) return { estudiante: 'Perfil Académico Desconocido', materia: materiaName };
+
+    const perf = perfiles.find(p => p.id === pa.perfil_id);
+    const estudianteName = perf ? `${perf.nombres} ${perf.apellidos}` : 'Perfil Desconocido';
+
+    return { estudiante: estudianteName, materia: materiaName };
   };
 
   return (
@@ -84,7 +121,8 @@ const Agenda = () => {
               </div>
               
               <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                <strong>Solicitud Asociada:</strong> #{ses.solicitud_id}
+                <div style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{getSolicitudDetails(ses.solicitud_id).estudiante}</div>
+                <div>{getSolicitudDetails(ses.solicitud_id).materia}</div>
               </div>
 
               <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
