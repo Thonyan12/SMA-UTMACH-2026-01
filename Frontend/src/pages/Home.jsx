@@ -16,19 +16,21 @@ const Home = () => {
   const [estudiantes, setEstudiantes] = useState([]);
   const [perfilesAcademicos, setPerfilesAcademicos] = useState([]);
   const [perfiles, setPerfiles] = useState([]);
+  const [carreras, setCarreras] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [mentoresRes, sesionesRes, solicitudesRes, matRes, estRes, paRes, perfRes] = await Promise.all([
+        const [mentoresRes, sesionesRes, solicitudesRes, matRes, estRes, paRes, perfRes, carRes] = await Promise.all([
           api.get('/actors/mentores/'),
           api.get('/processes/sesiones-mentoria/'),
           api.get('/processes/solicitudes-mentoria/'),
           api.get('/academic/materias/'),
           api.get('/actors/estudiantes/'),
           api.get('/academic/perfiles-academicos/'),
-          api.get('/users/perfiles/')
+          api.get('/users/perfiles/'),
+          api.get('/academic/carreras/')
         ]);
 
         const mentores = mentoresRes.data;
@@ -47,6 +49,7 @@ const Home = () => {
         setEstudiantes(estRes.data);
         setPerfilesAcademicos(paRes.data);
         setPerfiles(perfRes.data);
+        setCarreras(carRes.data);
 
         setStats({
           mentores: mentores.length,
@@ -94,12 +97,34 @@ const Home = () => {
     return perf ? `${perf.nombres} ${perf.apellidos}` : `Perfil Desconocido`;
   };
 
+  const getStudentInfo = () => {
+    if (!isEstudiante || !user?.estudiante_id) return null;
+    const est = estudiantes.find(e => e.id === user.estudiante_id);
+    if (!est) return null;
+    
+    const pa = perfilesAcademicos.find(pa => pa.id === est.academico_id);
+    if (!pa) return null;
+
+    const carrera = carreras.find(c => c.id === pa.carrera_id);
+    const semestre = est.semestre || 'Desconocido';
+    const nombreCarrera = carrera ? carrera.nombre : 'Carrera Desconocida';
+
+    return { semestre, nombreCarrera };
+  };
+
+  const studentInfo = getStudentInfo();
+
   return (
     <div>
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: '2rem', marginBottom: '8px' }}>
           Bienvenido {isAdmin ? 'Administrador' : isMentor ? 'Mentor' : 'Estudiante'}: {user?.nombres ? `${user.nombres} ${user.apellidos}` : 'Usuario'}
         </h1>
+        {isEstudiante && studentInfo && (
+          <div style={{ fontSize: '1.2rem', color: 'var(--accent-primary)', fontWeight: '500', marginBottom: '8px' }}>
+            Cursando el {studentInfo.semestre} Semestre en {studentInfo.nombreCarrera}
+          </div>
+        )}
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>
           Aquí tienes un resumen de la actividad reciente.
         </p>
@@ -147,49 +172,62 @@ const Home = () => {
       </div>
 
       {/* Sección de Actividad Reciente */}
-      <h2 style={{ fontSize: '1.4rem', marginBottom: '20px' }}>Actividad Reciente</h2>
+      <h2 style={{ fontSize: '1.4rem', marginBottom: '20px' }}>
+        {isEstudiante ? 'Mis actividades recientes' : 'Actividad Reciente'}
+      </h2>
       <div className="card-panel">
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
               {isAdmin && <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Solicitud ID</th>}
-              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estudiante</th>
+              {!isEstudiante && <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estudiante</th>}
+              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Tutoría (Materia)</th>
               <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estado</th>
               <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Fecha Creada</th>
+              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Fecha Aceptada</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={isAdmin ? "4" : "3"} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando actividad...</td>
+                <td colSpan={isAdmin ? "6" : "5"} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando actividad...</td>
               </tr>
             ) : actividad.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? "4" : "3"} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay actividad reciente.</td>
+                <td colSpan={isAdmin ? "6" : "5"} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay actividad reciente.</td>
               </tr>
             ) : (
-              actividad.map((act) => (
-                <tr key={act.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  {isAdmin && <td style={{ padding: '16px 24px', fontWeight: '500' }}>{act.id}</td>}
-                  <td style={{ padding: '16px 24px' }}>{getEstudianteName(act.estudiante_id)}</td>
-                  <td style={{ padding: '16px 24px' }}>
-                    <span style={{ 
-                      color: getStatusColor(act.estado_solicitud), 
-                      fontWeight: '500', 
-                      textTransform: 'capitalize',
-                      backgroundColor: 'var(--bg-secondary)',
-                      padding: '4px 10px',
-                      borderRadius: '12px',
-                      fontSize: '0.85rem'
-                    }}>
-                      {act.estado_solicitud}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px 24px', color: 'var(--text-muted)' }}>
-                    {formatDate(act.fecha_creacion)}
-                  </td>
-                </tr>
-              ))
+              actividad.map((act) => {
+                const materia = materias.find(m => m.id === act.materia_id);
+                return (
+                  <tr key={act.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    {isAdmin && <td style={{ padding: '16px 24px', fontWeight: '500' }}>{act.id}</td>}
+                    {!isEstudiante && <td style={{ padding: '16px 24px' }}>{getEstudianteName(act.estudiante_id)}</td>}
+                    <td style={{ padding: '16px 24px', fontWeight: '500', color: 'var(--text-primary)' }}>
+                      {materia ? materia.nombre : 'Materia Desconocida'}
+                    </td>
+                    <td style={{ padding: '16px 24px' }}>
+                      <span style={{ 
+                        color: getStatusColor(act.estado_solicitud), 
+                        fontWeight: '500', 
+                        textTransform: 'capitalize',
+                        backgroundColor: 'var(--bg-secondary)',
+                        padding: '4px 10px',
+                        borderRadius: '12px',
+                        fontSize: '0.85rem'
+                      }}>
+                        {act.estado_solicitud}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px 24px', color: 'var(--text-muted)' }}>
+                      {formatDate(act.fecha_creacion)}
+                    </td>
+                    <td style={{ padding: '16px 24px', color: 'var(--text-muted)' }}>
+                      {act.estado_solicitud === 'aprobada' ? formatDate(act.fecha_actualizacion) : '-'}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

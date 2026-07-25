@@ -13,24 +13,28 @@ const Solicitudes = () => {
   const [perfiles, setPerfiles] = useState([]);
   const [carreras, setCarreras] = useState([]);
   const [facultades, setFacultades] = useState([]);
+  const [carreraMaterias, setCarreraMaterias] = useState([]);
   
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState(null); // Para el modal de perfil
 
   const [formData, setFormData] = useState({
-    estudiante_id: 1, // Por defecto
-    materia_id: 1,
+    materia_id: '',
     descripcion: '',
     fecha_hora_deseada: '',
     prioridad: 'media'
   });
   const [submitting, setSubmitting] = useState(false);
+  const [obscenityError, setObscenityError] = useState('');
+  const [datetimeError, setDatetimeError] = useState('');
+  
+  const BAD_WORDS = ['puta', 'mierda', 'pendejo', 'idiota', 'estupido', 'cojudo', 'verga', 'cabron', 'maricon', 'perra'];
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [solRes, matRes, estRes, mentRes, paRes, perfRes, carRes, facRes] = await Promise.all([
+      const [solRes, matRes, estRes, mentRes, paRes, perfRes, carRes, facRes, cmRes] = await Promise.all([
         api.get('/processes/solicitudes-mentoria/'),
         api.get('/academic/materias/'),
         api.get('/actors/estudiantes/'),
@@ -38,7 +42,8 @@ const Solicitudes = () => {
         api.get('/academic/perfiles-academicos/'),
         api.get('/users/perfiles/'),
         api.get('/academic/carreras/'),
-        api.get('/academic/facultades/')
+        api.get('/academic/facultades/'),
+        api.get('/academic/carrera-materias/')
       ]);
       
       let solData = solRes.data.sort((a, b) => b.id - a.id);
@@ -60,6 +65,7 @@ const Solicitudes = () => {
       setPerfiles(perfRes.data);
       setCarreras(carRes.data);
       setFacultades(facRes.data);
+      setCarreraMaterias(cmRes.data);
     } catch (error) {
       console.error('Error fetching data for solicitudes:', error);
     } finally {
@@ -133,14 +139,25 @@ const Solicitudes = () => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    if (obscenityError || datetimeError) return;
+    
+    // Doble validación al enviar por si acaso
+    if (formData.fecha_hora_deseada < getMinDateTime()) {
+      setDatetimeError('La fecha y hora debe ser de al menos 2 horas en el futuro.');
+      return;
+    }
+    
     setSubmitting(true);
     try {
       const payload = {
         ...formData,
+        estudiante_id: user.estudiante_id,
         fecha_hora_deseada: new Date(formData.fecha_hora_deseada).toISOString()
       };
       await api.post('/processes/solicitudes-mentoria/', payload);
       setShowModal(false);
+      setFormData({ materia_id: '', descripcion: '', fecha_hora_deseada: '', prioridad: 'media' });
+      setDatetimeError('');
       fetchData();
     } catch (error) {
       console.error('Error creating solicitud:', error);
@@ -158,6 +175,18 @@ const Solicitudes = () => {
       console.error('Error actualizando solicitud:', error);
       alert('Error al actualizar el estado de la solicitud.');
     }
+  };
+
+  const getMinDateTime = () => {
+    const now = new Date();
+    now.setHours(now.getHours() + 2);
+    // Formato: YYYY-MM-DDTHH:mm
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   const formatDate = (isoString) => {
@@ -371,49 +400,85 @@ const Solicitudes = () => {
           display: 'flex', justifyContent: 'center', alignItems: 'center',
           zIndex: 1000
         }}>
-          <div className="card-panel" style={{ width: '100%', maxWidth: '500px', padding: '32px' }}>
-            <h2 style={{ marginBottom: '24px' }}>Crear Nueva Solicitud</h2>
-            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Descripción del problema</label>
+          {(() => {
+            let materiasDisponibles = materias;
+            if (user?.roles?.includes('estudiante') && user?.estudiante_id) {
+              const est = estudiantes.find(e => e.id === user.estudiante_id);
+              if (est) {
+                const pa = perfilesAcademicos.find(p => p.id === est.academico_id);
+                if (pa) {
+                  const cm = carreraMaterias.filter(c => c.carrera_id === pa.carrera_id);
+                  const validMateriaIds = cm.map(c => c.materia_id);
+                  materiasDisponibles = materias.filter(m => validMateriaIds.includes(m.id));
+                }
+              }
+            }
+            return (
+              <div className="card-panel" style={{ width: '100%', maxWidth: '500px', padding: '32px' }}>
+                <h2 style={{ marginBottom: '24px' }}>Crear Nueva Solicitud</h2>
+                <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Descripción del problema</label>
                 <textarea 
                   required
                   rows={3}
                   value={formData.descripcion}
-                  onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', resize: 'none' }}
+                  onChange={(e) => {
+                    const text = e.target.value;
+                    setFormData({...formData, descripcion: text});
+                    const hasBadWords = BAD_WORDS.some(word => text.toLowerCase().includes(word));
+                    if (hasBadWords) {
+                      setObscenityError('¡Ey! No puedes escribir eso. Borra o serás reportado al administrador.');
+                    } else {
+                      setObscenityError('');
+                    }
+                  }}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: obscenityError ? '1px solid var(--danger)' : '1px solid var(--border-color)', resize: 'none' }}
                   placeholder="Temas a revisar, dudas específicas..."
                 />
+                {obscenityError && (
+                  <span style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
+                    {obscenityError}
+                  </span>
+                )}
               </div>
-              <div style={{ display: 'flex', gap: '16px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Estudiante ID</label>
-                  <input 
-                    type="number" required
-                    value={formData.estudiante_id}
-                    onChange={(e) => setFormData({...formData, estudiante_id: parseInt(e.target.value)})}
-                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Materia ID</label>
-                  <input 
-                    type="number" required
-                    value={formData.materia_id}
-                    onChange={(e) => setFormData({...formData, materia_id: parseInt(e.target.value)})}
-                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
-                  />
-                </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Materia</label>
+                <select 
+                  required
+                  value={formData.materia_id}
+                  onChange={(e) => setFormData({...formData, materia_id: parseInt(e.target.value)})}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                >
+                  <option value="" disabled>Seleccione una materia...</option>
+                  {materiasDisponibles.map(m => (
+                    <option key={m.id} value={m.id}>{m.nombre}</option>
+                  ))}
+                </select>
               </div>
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Fecha/Hora Deseada</label>
                   <input 
                     type="datetime-local" required
+                    min={getMinDateTime()}
                     value={formData.fecha_hora_deseada}
-                    onChange={(e) => setFormData({...formData, fecha_hora_deseada: e.target.value})}
-                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                    onChange={(e) => {
+                      const selectedVal = e.target.value;
+                      setFormData({...formData, fecha_hora_deseada: selectedVal});
+                      if (selectedVal < getMinDateTime()) {
+                        setDatetimeError('Debe ser al menos 2 horas en el futuro.');
+                      } else {
+                        setDatetimeError('');
+                      }
+                    }}
+                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: datetimeError ? '1px solid var(--danger)' : '1px solid var(--border-color)' }}
                   />
+                  {datetimeError && (
+                    <span style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
+                      {datetimeError}
+                    </span>
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Prioridad</label>
@@ -430,15 +495,17 @@ const Solicitudes = () => {
               </div>
               
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
-                <button type="button" className="btn-secondary" onClick={() => setShowModal(false)} disabled={submitting}>
+                <button type="button" className="btn-secondary" onClick={() => { setShowModal(false); setObscenityError(''); setDatetimeError(''); }} disabled={submitting}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn-primary" disabled={submitting}>
+                <button type="submit" className="btn-primary" disabled={submitting || obscenityError !== '' || datetimeError !== ''}>
                   {submitting ? 'Enviando...' : 'Crear Solicitud'}
                 </button>
               </div>
-            </form>
-          </div>
+              </form>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
