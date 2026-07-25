@@ -223,7 +223,7 @@ const Home = () => {
                       {formatDate(act.fecha_creacion)}
                     </td>
                     <td style={{ padding: '16px 24px', color: 'var(--text-muted)' }}>
-                      {act.estado_solicitud === 'aprobada' ? formatDate(act.fecha_actualizacion) : '-'}
+                      {act.estado_solicitud === 'aceptada' ? formatDate(act.fecha_actualizacion) : '-'}
                     </td>
                   </tr>
                 );
