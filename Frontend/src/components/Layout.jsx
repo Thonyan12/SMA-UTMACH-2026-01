@@ -43,9 +43,9 @@ const Layout = () => {
   const menuItems = getMenuItems();
 
   const fetchNotificaciones = async () => {
-    if (!user?.cuenta_id) return;
+    if (!user?.id) return;
     try {
-      const res = await api.get(`/processes/notificaciones/cuenta/${user.cuenta_id}`);
+      const res = await api.get(`/processes/notificaciones/cuenta/${user.id}`);
       setNotificaciones(res.data);
     } catch (error) {
       console.error('Error fetching notificaciones:', error);
@@ -246,7 +246,7 @@ const Layout = () => {
                               <span style={{ fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-primary)' }}>{notif.titulo}</span>
                               {notif.leido === 0 && <div style={{ width: '8px', height: '8px', backgroundColor: 'var(--accent-primary)', borderRadius: '50%', marginTop: '4px' }}></div>}
                             </div>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>{notif.mensaje}</p>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>{notif.mensaje.replace(/\s*#\d+\s*/g, ' ')}</p>
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px', display: 'block' }}>
                               {new Date(notif.fecha_creacion).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                             </span>

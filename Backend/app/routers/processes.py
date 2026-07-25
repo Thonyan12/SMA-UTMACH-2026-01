@@ -133,7 +133,7 @@ def create_solicitud_mentoria(item: SolicitudMentoriaCreate, db: Session = Depen
                     create_system_notification(
                         db, m_cuenta_id, 
                         "Nueva Solicitud Asignada", 
-                        f"Se te ha asignado automáticamente la solicitud #{solicitud.id} para revisión.", 
+                        "Se te ha asignado automáticamente una nueva solicitud de mentoría para revisión.", 
                         solicitud_id=solicitud.id
                     )
                     db.commit()
@@ -160,7 +160,7 @@ def update_solicitud_mentoria(id: int, item: SolicitudMentoriaUpdate, db: Sessio
         c_id = get_cuenta_id_for_estudiante(db, db_item.estudiante_id)
         if c_id:
             titulo = f"Solicitud {item.estado_solicitud.capitalize()}"
-            msg = f"Tu solicitud de mentoría #{id} ha sido {item.estado_solicitud}."
+            msg = f"Tu solicitud de mentoría ha sido {item.estado_solicitud}."
             create_system_notification(db, c_id, titulo, msg, solicitud_id=id)
             db.commit()
             
@@ -232,7 +232,7 @@ def create_sesion_mentoria(item: SesionMentoriaCreate, db: Session = Depends(get
         if sol:
             c_id = get_cuenta_id_for_estudiante(db, sol.estudiante_id)
             if c_id:
-                create_system_notification(db, c_id, "Sesión Programada", f"Se ha programado una sesión para tu solicitud #{item.solicitud_id}.", solicitud_id=item.solicitud_id)
+                create_system_notification(db, c_id, "Sesión Programada", "Se ha programado una sesión para tu solicitud.", solicitud_id=item.solicitud_id)
                 db.commit()
                 
         return {"message": "Sesión programada exitosamente a través de PKG_MENTORIAS"}
@@ -260,8 +260,8 @@ def update_sesion_mentoria(id: int, item: SesionMentoriaUpdate, db: Session = De
             men_cuenta_id = get_cuenta_id_for_mentor(db, sol.mentor_id) if sol.mentor_id else None
             
             titulo = f"Sesión {item.estado_sesion.capitalize()}"
-            msg_est = f"La sesión de la solicitud #{sol.id} ha sido {item.estado_sesion}."
-            msg_men = f"La sesión de la solicitud #{sol.id} ha sido {item.estado_sesion}."
+            msg_est = f"Tu sesión de mentoría ha sido {item.estado_sesion}."
+            msg_men = f"La sesión de mentoría ha sido {item.estado_sesion}."
             
             if est_cuenta_id:
                 create_system_notification(db, est_cuenta_id, titulo, msg_est, sesion_id=id)
