@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { FaHome, FaCalendarAlt, FaUserGraduate, FaSignOutAlt } from 'react-icons/fa';
+import { AuthContext } from '../context/AuthContext';
 
 const Layout = () => {
   const location = useLocation();
+  const { user, logout } = useContext(AuthContext);
 
   const menuItems = [
     { path: '/', label: 'Inicio', icon: <FaHome /> },
@@ -65,6 +67,7 @@ const Layout = () => {
 
         <div style={{ padding: '24px 16px', borderTop: '1px solid var(--border-color)' }}>
           <button 
+            onClick={logout}
             style={{
               width: '100%',
               display: 'flex',
@@ -106,8 +109,10 @@ const Layout = () => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ textAlign: 'right' }}>
-              <p style={{ margin: 0, fontWeight: '600', fontSize: '0.95rem' }}>Usuario UTMACH</p>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Administrador</p>
+              <p style={{ margin: 0, fontWeight: '600', fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                {user ? user.correo : 'Usuario UTMACH'}
+              </p>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Cuenta Activa</p>
             </div>
             <div style={{ 
               width: '40px', 
@@ -118,9 +123,10 @@ const Layout = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: 'bold'
+              fontWeight: 'bold',
+              textTransform: 'uppercase'
             }}>
-              U
+              {user && user.correo ? user.correo.charAt(0) : 'U'}
             </div>
           </div>
         </header>
