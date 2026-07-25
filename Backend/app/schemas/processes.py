@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 # =======================
@@ -119,6 +119,16 @@ class NotificacionResponse(NotificacionBase):
     fecha_actualizacion: datetime
     class Config:
         from_attributes = True
+
+# =======================
+# Dashboard Estadisticas
+# =======================
+class EstadisticasResponse(BaseModel):
+    total_estudiantes: int
+    total_mentores: int
+    total_solicitudes: int
+    solicitudes_por_estado: List[Dict[str, Any]]
+    solicitudes_por_materia: List[Dict[str, Any]]
 
 # =======================
 # HistorialCambios

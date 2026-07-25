@@ -59,6 +59,33 @@ def create_system_notification(db: Session, cuenta_id: int, titulo: str, mensaje
 # ==========================================
 # CRUD para SolicitudesMentoria
 # ==========================================
+from sqlalchemy import func
+from app.models.academic import Materia
+from app.schemas.processes import EstadisticasResponse
+
+@router.get("/estadisticas/", response_model=EstadisticasResponse)
+def get_estadisticas(db: Session = Depends(get_db)):
+    # Totals
+    total_estudiantes = db.query(func.count(Estudiante.id)).scalar()
+    total_mentores = db.query(func.count(Mentor.id)).scalar()
+    total_solicitudes = db.query(func.count(SolicitudMentoria.id)).scalar()
+    
+    # Solicitudes por estado
+    sol_estado_query = db.query(SolicitudMentoria.estado_solicitud, func.count(SolicitudMentoria.id)).group_by(SolicitudMentoria.estado_solicitud).all()
+    solicitudes_por_estado = [{"name": estado, "value": count} for estado, count in sol_estado_query]
+    
+    # Solicitudes por materia
+    sol_materia_query = db.query(Materia.nombre, func.count(SolicitudMentoria.id)).join(Materia, Materia.id == SolicitudMentoria.materia_id).group_by(Materia.nombre).all()
+    solicitudes_por_materia = [{"name": nombre, "value": count} for nombre, count in sol_materia_query]
+    
+    return {
+        "total_estudiantes": total_estudiantes,
+        "total_mentores": total_mentores,
+        "total_solicitudes": total_solicitudes,
+        "solicitudes_por_estado": solicitudes_por_estado,
+        "solicitudes_por_materia": solicitudes_por_materia
+    }
+
 @router.get("/solicitudes-mentoria/", response_model=List[SolicitudMentoriaResponse])
 def get_solicitudes_mentoria(db: Session = Depends(get_db)):
     return db.query(SolicitudMentoria).all()

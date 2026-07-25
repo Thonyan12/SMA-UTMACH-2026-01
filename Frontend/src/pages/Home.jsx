@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { FaUserGraduate, FaChalkboardTeacher, FaCalendarCheck } from 'react-icons/fa';
+import { FaUserGraduate, FaChalkboardTeacher, FaCalendarCheck, FaClipboardList } from 'react-icons/fa';
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const Home = () => {
   const { user } = useContext(AuthContext);
@@ -18,11 +19,14 @@ const Home = () => {
   const [perfiles, setPerfiles] = useState([]);
   const [carreras, setCarreras] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Para el admin dashboard
+  const [dashboardStats, setDashboardStats] = useState(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [mentoresRes, sesionesRes, solicitudesRes, matRes, estRes, paRes, perfRes, carRes] = await Promise.all([
+        const promises = [
           api.get('/actors/mentores/'),
           api.get('/processes/sesiones-mentoria/'),
           api.get('/processes/solicitudes-mentoria/'),
@@ -31,7 +35,26 @@ const Home = () => {
           api.get('/academic/perfiles-academicos/'),
           api.get('/users/perfiles/'),
           api.get('/academic/carreras/')
-        ]);
+        ];
+        
+        if (isAdmin) {
+          promises.push(api.get('/processes/estadisticas/'));
+        }
+
+        const res = await Promise.all(promises);
+        
+        const mentoresRes = res[0];
+        const sesionesRes = res[1];
+        const solicitudesRes = res[2];
+        const matRes = res[3];
+        const estRes = res[4];
+        const paRes = res[5];
+        const perfRes = res[6];
+        const carRes = res[7];
+
+        if (isAdmin && res[8]) {
+          setDashboardStats(res[8].data);
+        }
 
         const mentores = mentoresRes.data;
         let sesiones = sesionesRes.data;
@@ -170,6 +193,73 @@ const Home = () => {
         </div>
 
       </div>
+
+      {/* ADMIN DASHBOARD CHARTS */}
+      {isAdmin && dashboardStats && (
+        <div style={{ marginBottom: '40px' }}>
+          <h2 style={{ fontSize: '1.4rem', marginBottom: '20px' }}>Panel Estadístico del Sistema</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+            
+            {/* Gráfico de Pastel - Solicitudes por Estado */}
+            <div className="card-panel" style={{ padding: '24px' }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '20px', color: 'var(--text-secondary)' }}>
+                Distribución de Solicitudes por Estado
+              </h3>
+              <div style={{ width: '100%', height: 300 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={dashboardStats.solicitudes_por_estado}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      fill="#8884d8"
+                      label
+                    >
+                      {dashboardStats.solicitudes_por_estado.map((entry, index) => {
+                        const COLORS = {
+                          'pendiente': '#f39c12',
+                          'aceptada': '#27ae60',
+                          'rechazada': '#e74c3c',
+                          'cancelada': '#95a5a6',
+                          'completada': '#3498db'
+                        };
+                        return <Cell key={`cell-${index}`} fill={COLORS[entry.name] || '#8884d8'} />;
+                      })}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Gráfico de Barras - Solicitudes por Materia */}
+            <div className="card-panel" style={{ padding: '24px' }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '20px', color: 'var(--text-secondary)' }}>
+                Top Materias Solicitadas
+              </h3>
+              <div style={{ width: '100%', height: 300 }}>
+                <ResponsiveContainer>
+                  <BarChart data={dashboardStats.solicitudes_por_materia}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                    <XAxis dataKey="name" stroke="var(--text-secondary)" />
+                    <YAxis stroke="var(--text-secondary)" />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: 'var(--bg-secondary)', border: 'none', borderRadius: '8px' }}
+                      itemStyle={{ color: 'var(--text-primary)' }}
+                    />
+                    <Bar dataKey="value" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* Sección de Actividad Reciente */}
       <h2 style={{ fontSize: '1.4rem', marginBottom: '20px' }}>
