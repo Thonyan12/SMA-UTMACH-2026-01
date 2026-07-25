@@ -4,6 +4,7 @@ from datetime import datetime
 
 from app.database import Base
 
+
 class Estudiante(Base):
     __tablename__ = "estudiantes"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)

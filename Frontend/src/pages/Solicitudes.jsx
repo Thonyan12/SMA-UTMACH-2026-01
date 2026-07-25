@@ -201,7 +201,7 @@ const Solicitudes = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'pendiente': return 'var(--warning)';
-      case 'aprobada': return 'var(--success)';
+      case 'aceptada': return 'var(--success)';
       case 'rechazada': return 'var(--danger)';
       case 'cancelada': return 'var(--text-muted)';
       default: return 'var(--text-primary)';
@@ -312,8 +312,8 @@ const Solicitudes = () => {
                         <button 
                           className="btn-primary"
                           style={{ padding: '8px 12px', fontSize: '0.85rem' }}
-                          title="Aprobar"
-                          onClick={() => handleUpdateState(sol.id, 'aprobada')}
+                          title="Aceptar"
+                          onClick={() => handleUpdateState(sol.id, 'aceptada')}
                         >
                           <FaCheck />
                         </button>

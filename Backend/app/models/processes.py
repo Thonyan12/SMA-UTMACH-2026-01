@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, Boolean, Float, Text
+from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, Boolean, Float, Text, FetchedValue
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
 from app.database import Base
+
 
 class SolicitudMentoria(Base):
     __tablename__ = "solicitudes_mentoria"
@@ -48,7 +49,7 @@ class Calificacion(Base):
     dominio_tema = Column(Integer, nullable=False)
     # puntaje_total is a VIRTUAL column in Oracle, we can omit it from Inserts/Updates, or map it as read-only.
     # We will map it to fetch it but not write to it.
-    puntaje_total = Column(Float, nullable=True) 
+    puntaje_total = Column(Float, FetchedValue()) 
     comentario = Column(String(4000))
     estado = Column(Integer, default=1, nullable=False)
     fecha_creacion = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)

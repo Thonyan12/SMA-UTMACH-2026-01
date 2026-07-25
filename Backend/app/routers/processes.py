@@ -8,6 +8,9 @@ from app.database import get_db
 from app.models.processes import (
     SolicitudMentoria, SesionMentoria, Calificacion, Notificacion, HistorialCambio
 )
+from app.models.actors import Estudiante, Mentor, MentorEspecialidad
+from app.models.academic import PerfilAcademico
+from app.models.users import Perfil
 from app.schemas.processes import (
     SolicitudMentoriaCreate, SolicitudMentoriaUpdate, SolicitudMentoriaResponse,
     SesionMentoriaCreate, SesionMentoriaUpdate, SesionMentoriaResponse,
@@ -17,6 +20,41 @@ from app.schemas.processes import (
 )
 
 router = APIRouter()
+
+# ==========================================
+# Funciones Auxiliares para Notificaciones
+# ==========================================
+def get_cuenta_id_for_estudiante(db: Session, estudiante_id: int):
+    est = db.query(Estudiante).filter(Estudiante.id == estudiante_id).first()
+    if est:
+        pa = db.query(PerfilAcademico).filter(PerfilAcademico.id == est.academico_id).first()
+        if pa:
+            perf = db.query(Perfil).filter(Perfil.id == pa.perfil_id).first()
+            if perf:
+                return perf.cuenta_id
+    return None
+
+def get_cuenta_id_for_mentor(db: Session, mentor_id: int):
+    men = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if men:
+        pa = db.query(PerfilAcademico).filter(PerfilAcademico.id == men.academico_id).first()
+        if pa:
+            perf = db.query(Perfil).filter(Perfil.id == pa.perfil_id).first()
+            if perf:
+                return perf.cuenta_id
+    return None
+
+def create_system_notification(db: Session, cuenta_id: int, titulo: str, mensaje: str, solicitud_id=None, sesion_id=None):
+    if not cuenta_id: return
+    notif = Notificacion(
+        cuenta_id=cuenta_id,
+        tipo='sistema',
+        titulo=titulo,
+        mensaje=mensaje,
+        solicitud_id=solicitud_id,
+        sesion_id=sesion_id
+    )
+    db.add(notif)
 
 # ==========================================
 # CRUD para SolicitudesMentoria
@@ -43,6 +81,36 @@ def create_solicitud_mentoria(item: SolicitudMentoriaCreate, db: Session = Depen
             }
         )
         db.commit()
+        
+        # Auto-asignar un mentor disponible para la materia
+        solicitud = db.query(SolicitudMentoria).filter(
+            SolicitudMentoria.estudiante_id == item.estudiante_id,
+            SolicitudMentoria.materia_id == item.materia_id
+        ).order_by(SolicitudMentoria.id.desc()).first()
+        
+        if solicitud:
+            # Buscar un mentor aprobado que dicte esta materia
+            mentor_esp = db.query(MentorEspecialidad).join(Mentor).filter(
+                MentorEspecialidad.materia_id == item.materia_id,
+                Mentor.estado_aprobacion == 'aprobado',
+                Mentor.estado == 1
+            ).first()
+            
+            if mentor_esp:
+                solicitud.mentor_id = mentor_esp.mentor_id
+                db.commit()
+                
+                # Notificar al mentor que se le ha asignado una nueva solicitud
+                m_cuenta_id = get_cuenta_id_for_mentor(db, mentor_esp.mentor_id)
+                if m_cuenta_id:
+                    create_system_notification(
+                        db, m_cuenta_id, 
+                        "Nueva Solicitud Asignada", 
+                        f"Se te ha asignado automáticamente la solicitud #{solicitud.id} para revisión.", 
+                        solicitud_id=solicitud.id
+                    )
+                    db.commit()
+        
         return {"message": "Solicitud creada exitosamente a través de PKG_MENTORIAS"}
     except DatabaseError as e:
         db.rollback()
@@ -59,6 +127,41 @@ def update_solicitud_mentoria(id: int, item: SolicitudMentoriaUpdate, db: Sessio
         setattr(db_item, key, value)
     db.commit()
     db.refresh(db_item)
+    
+    # Crear notificación si el estado cambió a aceptada o rechazada
+    if item.estado_solicitud in ['aceptada', 'rechazada']:
+        c_id = get_cuenta_id_for_estudiante(db, db_item.estudiante_id)
+        if c_id:
+            titulo = f"Solicitud {item.estado_solicitud.capitalize()}"
+            msg = f"Tu solicitud de mentoría #{id} ha sido {item.estado_solicitud}."
+            create_system_notification(db, c_id, titulo, msg, solicitud_id=id)
+            db.commit()
+            
+        if item.estado_solicitud == 'aceptada':
+            from datetime import timedelta
+            # Crear la sesión de mentoría automáticamente
+            # Buscar si ya existe para no duplicar
+            sesion_existente = db.query(SesionMentoria).filter(SesionMentoria.solicitud_id == id).first()
+            if not sesion_existente:
+                nueva_sesion = SesionMentoria(
+                    solicitud_id=id,
+                    inicio=db_item.fecha_hora_deseada,
+                    fin=db_item.fecha_hora_deseada + timedelta(hours=1),
+                    enlace_teams="https://teams.microsoft.com/l/meetup-join/..." # Placeholder generico
+                )
+                db.add(nueva_sesion)
+                db.commit()
+                
+                # Crear notificación para la nueva reunión
+                if c_id:
+                    create_system_notification(
+                        db, c_id, 
+                        "Reunión Programada", 
+                        f"Se ha programado tu reunión de mentoría para el {db_item.fecha_hora_deseada.strftime('%d/%m/%Y %H:%M')}.", 
+                        solicitud_id=id
+                    )
+                    db.commit()
+            
     return db_item
 
 @router.delete("/solicitudes-mentoria/{id}")
@@ -96,6 +199,15 @@ def create_sesion_mentoria(item: SesionMentoriaCreate, db: Session = Depends(get
             }
         )
         db.commit()
+        
+        # Notify student that a session was scheduled
+        sol = db.query(SolicitudMentoria).filter(SolicitudMentoria.id == item.solicitud_id).first()
+        if sol:
+            c_id = get_cuenta_id_for_estudiante(db, sol.estudiante_id)
+            if c_id:
+                create_system_notification(db, c_id, "Sesión Programada", f"Se ha programado una sesión para tu solicitud #{item.solicitud_id}.", solicitud_id=item.solicitud_id)
+                db.commit()
+                
         return {"message": "Sesión programada exitosamente a través de PKG_MENTORIAS"}
     except DatabaseError as e:
         db.rollback()
@@ -112,6 +224,24 @@ def update_sesion_mentoria(id: int, item: SesionMentoriaUpdate, db: Session = De
         setattr(db_item, key, value)
     db.commit()
     db.refresh(db_item)
+    
+    # Notificaciones de sesión
+    if item.estado_sesion in ['cancelada', 'completada']:
+        sol = db.query(SolicitudMentoria).filter(SolicitudMentoria.id == db_item.solicitud_id).first()
+        if sol:
+            est_cuenta_id = get_cuenta_id_for_estudiante(db, sol.estudiante_id)
+            men_cuenta_id = get_cuenta_id_for_mentor(db, sol.mentor_id) if sol.mentor_id else None
+            
+            titulo = f"Sesión {item.estado_sesion.capitalize()}"
+            msg_est = f"La sesión de la solicitud #{sol.id} ha sido {item.estado_sesion}."
+            msg_men = f"La sesión de la solicitud #{sol.id} ha sido {item.estado_sesion}."
+            
+            if est_cuenta_id:
+                create_system_notification(db, est_cuenta_id, titulo, msg_est, sesion_id=id)
+            if men_cuenta_id:
+                create_system_notification(db, men_cuenta_id, titulo, msg_men, sesion_id=id)
+            db.commit()
+            
     return db_item
 
 @router.delete("/sesiones-mentoria/{id}")
@@ -169,6 +299,10 @@ def delete_calificacion(id: int, db: Session = Depends(get_db)):
 def get_notificaciones(db: Session = Depends(get_db)):
     return db.query(Notificacion).all()
 
+@router.get("/notificaciones/cuenta/{cuenta_id}", response_model=List[NotificacionResponse])
+def get_notificaciones_by_cuenta(cuenta_id: int, db: Session = Depends(get_db)):
+    return db.query(Notificacion).filter(Notificacion.cuenta_id == cuenta_id).order_by(Notificacion.id.desc()).all()
+
 @router.post("/notificaciones/", response_model=NotificacionResponse)
 def create_notificacion(item: NotificacionCreate, db: Session = Depends(get_db)):
     db_item = Notificacion(**item.model_dump())
@@ -185,6 +319,11 @@ def update_notificacion(id: int, item: NotificacionUpdate, db: Session = Depends
     update_data = item.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_item, key, value)
+    
+    if item.leido == 1 and not db_item.fecha_leido:
+        from datetime import datetime
+        db_item.fecha_leido = datetime.utcnow()
+        
     db.commit()
     db.refresh(db_item)
     return db_item
