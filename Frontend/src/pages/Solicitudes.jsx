@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { FaPlus, FaCheck, FaTimes, FaSpinner } from 'react-icons/fa';
+import { FaPlus, FaCheck, FaTimes, FaSpinner, FaUserCircle } from 'react-icons/fa';
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
 
@@ -8,12 +8,18 @@ const Solicitudes = () => {
   const [solicitudes, setSolicitudes] = useState([]);
   const [materias, setMaterias] = useState([]);
   const [estudiantes, setEstudiantes] = useState([]);
+  const [mentores, setMentores] = useState([]);
   const [perfilesAcademicos, setPerfilesAcademicos] = useState([]);
   const [perfiles, setPerfiles] = useState([]);
+  const [carreras, setCarreras] = useState([]);
+  const [facultades, setFacultades] = useState([]);
+  
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState(null); // Para el modal de perfil
+
   const [formData, setFormData] = useState({
-    estudiante_id: 1, // Por defecto para esta iteración
+    estudiante_id: 1, // Por defecto
     materia_id: 1,
     descripcion: '',
     fecha_hora_deseada: '',
@@ -24,12 +30,15 @@ const Solicitudes = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [solRes, matRes, estRes, paRes, perfRes] = await Promise.all([
+      const [solRes, matRes, estRes, mentRes, paRes, perfRes, carRes, facRes] = await Promise.all([
         api.get('/processes/solicitudes-mentoria/'),
         api.get('/academic/materias/'),
         api.get('/actors/estudiantes/'),
+        api.get('/actors/mentores/'),
         api.get('/academic/perfiles-academicos/'),
-        api.get('/users/perfiles/') // asumiendo que este es el endpoint para perfiles
+        api.get('/users/perfiles/'),
+        api.get('/academic/carreras/'),
+        api.get('/academic/facultades/')
       ]);
       
       let solData = solRes.data.sort((a, b) => b.id - a.id);
@@ -46,8 +55,11 @@ const Solicitudes = () => {
       setSolicitudes(solData);
       setMaterias(matRes.data);
       setEstudiantes(estRes.data);
+      setMentores(mentRes.data);
       setPerfilesAcademicos(paRes.data);
       setPerfiles(perfRes.data);
+      setCarreras(carRes.data);
+      setFacultades(facRes.data);
     } catch (error) {
       console.error('Error fetching data for solicitudes:', error);
     } finally {
@@ -70,29 +82,69 @@ const Solicitudes = () => {
     if (!est) return `Estudiante Desconocido`;
     
     const pa = perfilesAcademicos.find(pa => pa.id === est.academico_id);
-    if (!pa) return `Perfil Académico Desconocido`;
+    const perf = perfiles.find(p => p.id === pa?.perfil_id);
+    return perf ? `${perf.nombres} ${perf.apellidos}` : `Perfil Desconocido`;
+  };
+
+  const getMentorName = (id) => {
+    if (!id) return null;
+    const men = mentores.find(m => m.id === id);
+    if (!men) return 'Mentor Desconocido';
+    
+    const pa = perfilesAcademicos.find(p => p.id === men.academico_id);
+    const perf = perfiles.find(p => p.id === pa?.perfil_id);
+    return perf ? `${perf.nombres} ${perf.apellidos}` : 'Perfil Desconocido';
+  };
+
+  const handleViewProfile = (roleId, roleType) => {
+    let academicoId = null;
+    let semestre = null;
+    
+    if (roleType === 'estudiante') {
+      const est = estudiantes.find(e => e.id === roleId);
+      if (est) {
+        academicoId = est.academico_id;
+        semestre = est.semestre;
+      }
+    } else {
+      const men = mentores.find(m => m.id === roleId);
+      if (men) {
+        academicoId = men.academico_id;
+      }
+    }
+
+    if (!academicoId) return;
+
+    const pa = perfilesAcademicos.find(p => p.id === academicoId);
+    if (!pa) return;
 
     const perf = perfiles.find(p => p.id === pa.perfil_id);
-    return perf ? `${perf.nombres} ${perf.apellidos}` : `Perfil Desconocido`;
+    const car = carreras.find(c => c.id === pa.carrera_id);
+    const fac = facultades.find(f => f.id === car?.facultad_id);
+
+    setSelectedProfile({
+      role: roleType,
+      perfil: perf,
+      carrera: car,
+      facultad: fac,
+      semestre: semestre
+    });
   };
 
   const handleCreate = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      // El formato que espera PKG_MENTORIAS.sp_crear_solicitud (FastAPI):
-      // estudiante_id, materia_id, descripcion, fecha_hora_deseada, prioridad
       const payload = {
         ...formData,
         fecha_hora_deseada: new Date(formData.fecha_hora_deseada).toISOString()
       };
       await api.post('/processes/solicitudes-mentoria/', payload);
       setShowModal(false);
-      fetchData(); // Recargar lista completa
-
+      fetchData();
     } catch (error) {
       console.error('Error creating solicitud:', error);
-      alert('Error al crear la solicitud. Revisa la consola.');
+      alert('Error al crear la solicitud.');
     } finally {
       setSubmitting(false);
     }
@@ -143,7 +195,8 @@ const Solicitudes = () => {
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
               {user?.roles?.includes('administrador') && <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>ID</th>}
-              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estudiante / Materia</th>
+              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Participantes</th>
+              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Materia</th>
               <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Descripción</th>
               <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estado</th>
               <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Acciones</th>
@@ -152,23 +205,51 @@ const Solicitudes = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={user?.roles?.includes('administrador') ? "5" : "4"} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <td colSpan={user?.roles?.includes('administrador') ? "6" : "5"} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <FaSpinner className="fa-spin" style={{ marginRight: '8px' }} /> Cargando solicitudes...
                 </td>
               </tr>
             ) : solicitudes.length === 0 ? (
               <tr>
-                <td colSpan={user?.roles?.includes('administrador') ? "5" : "4"} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No se encontraron solicitudes registradas.</td>
+                <td colSpan={user?.roles?.includes('administrador') ? "6" : "5"} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No se encontraron solicitudes registradas.</td>
               </tr>
             ) : (
               solicitudes.map((sol) => (
                 <tr key={sol.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                   {user?.roles?.includes('administrador') && <td style={{ padding: '16px 24px', fontWeight: '500' }}>{sol.id}</td>}
+                  
                   <td style={{ padding: '16px 24px' }}>
-                    <div style={{ fontWeight: '500' }}>{getEstudianteName(sol.estudiante_id)}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--accent-primary)' }}>{getMateriaName(sol.materia_id)}</div>
+                    <div style={{ marginBottom: '8px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', fontWeight: 'bold' }}>ESTUDIANTE</span>
+                      <button 
+                        onClick={() => handleViewProfile(sol.estudiante_id, 'estudiante')}
+                        style={{ background: 'none', border: 'none', color: 'var(--primary-color)', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                        title="Ver Perfil del Estudiante"
+                      >
+                        {getEstudianteName(sol.estudiante_id)}
+                      </button>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', fontWeight: 'bold' }}>MENTOR</span>
+                      {sol.mentor_id ? (
+                        <button 
+                          onClick={() => handleViewProfile(sol.mentor_id, 'mentor')}
+                          style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                          title="Ver Perfil del Mentor"
+                        >
+                          {getMentorName(sol.mentor_id)}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Por asignar</span>
+                      )}
+                    </div>
                   </td>
-                  <td style={{ padding: '16px 24px', maxWidth: '300px' }}>
+
+                  <td style={{ padding: '16px 24px' }}>
+                    <div style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{getMateriaName(sol.materia_id)}</div>
+                  </td>
+
+                  <td style={{ padding: '16px 24px', maxWidth: '250px' }}>
                     <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {sol.descripcion}
                     </div>
@@ -176,6 +257,7 @@ const Solicitudes = () => {
                       Para: {formatDate(sol.fecha_hora_deseada)} (Prioridad: {sol.prioridad})
                     </div>
                   </td>
+
                   <td style={{ padding: '16px 24px' }}>
                     <span style={{ 
                       color: getStatusColor(sol.estado_solicitud), 
@@ -189,6 +271,7 @@ const Solicitudes = () => {
                       {sol.estado_solicitud}
                     </span>
                   </td>
+
                   <td style={{ padding: '16px 24px' }}>
                     {!user?.roles?.includes('estudiante') && sol.estado_solicitud === 'pendiente' ? (
                       <div style={{ display: 'flex', gap: '8px' }}>
@@ -221,6 +304,64 @@ const Solicitudes = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Modal de Detalles del Perfil */}
+      {selectedProfile && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 1100,
+          backdropFilter: 'blur(3px)'
+        }}>
+          <div className="card-panel" style={{ width: '100%', maxWidth: '450px', padding: '32px', position: 'relative' }}>
+            <button 
+              onClick={() => setSelectedProfile(null)} 
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-muted)' }}
+            >
+              <FaTimes />
+            </button>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
+              <FaUserCircle style={{ fontSize: '4rem', color: 'var(--primary-color)', marginBottom: '12px' }} />
+              <h2 style={{ margin: '0 0 4px 0', color: 'var(--text-primary)', textAlign: 'center' }}>
+                {selectedProfile.perfil?.nombres} {selectedProfile.perfil?.apellidos}
+              </h2>
+              <span style={{ 
+                backgroundColor: selectedProfile.role === 'estudiante' ? 'var(--primary-color)' : 'var(--accent-primary)', 
+                color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' 
+              }}>
+                {selectedProfile.role}
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', backgroundColor: 'var(--bg-secondary)', padding: '20px', borderRadius: '8px' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', display: 'block' }}>FACULTAD</span>
+                <div style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{selectedProfile.facultad?.nombre || 'Información no disponible'}</div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', display: 'block' }}>CARRERA</span>
+                <div style={{ fontSize: '1rem', color: 'var(--text-primary)', fontWeight: '500' }}>
+                  {selectedProfile.carrera?.nombre || 'Información no disponible'}
+                </div>
+              </div>
+
+              {selectedProfile.role === 'estudiante' && (
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', display: 'block' }}>SEMESTRE ACTUAL</span>
+                  <div style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{selectedProfile.semestre}</div>
+                </div>
+              )}
+            </div>
+            
+            <button className="btn-primary" onClick={() => setSelectedProfile(null)} style={{ width: '100%', marginTop: '24px', padding: '12px' }}>
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal Minimalista para Nueva Solicitud */}
       {showModal && (
