@@ -51,7 +51,7 @@ const Landing = () => {
         <img 
           src="/logo-horizontal-300x99.png" 
           alt="UTMACH Logo Oficial" 
-          style={{ width: '100%', maxWidth: '280px', marginBottom: '24px' }} 
+          style={{ display: 'block', margin: '0 auto 24px auto', width: '100%', maxWidth: '280px' }} 
         />
 
         <h1 style={{ 
