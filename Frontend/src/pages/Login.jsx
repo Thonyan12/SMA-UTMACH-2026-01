@@ -41,10 +41,8 @@ const Login = () => {
       padding: '24px'
     }}>
       <div className="card-panel" style={{ width: '100%', maxWidth: '420px', padding: '40px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h2 style={{ color: 'var(--accent-primary)', fontSize: '1.8rem', marginBottom: '8px' }}>
-            UTMACH SMA
-          </h2>
+        <div style={{ textAlign: 'center', marginBottom: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <img src="/logo-horizontal-300x99.png" alt="UTMACH Logo" style={{ width: '100%', maxWidth: '220px', marginBottom: '16px' }} />
           <p style={{ color: 'var(--text-secondary)' }}>
             Inicia sesión para acceder al sistema
           </p>

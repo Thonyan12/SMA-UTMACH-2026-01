@@ -14,9 +14,8 @@ const Landing = () => {
         backgroundColor: 'var(--primary-color)',
         color: '#ffffff'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <img src="/vite.svg" alt="UTMACH Logo" style={{ width: '32px', height: '32px' }} />
-          <span style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>UTMACH SMA</span>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <img src="/MARCA_UTMACH_BLANCO-Hor-300x99%20(1).png" alt="UTMACH Logo" style={{ height: '45px' }} />
         </div>
         <div>
           <Link to="/login" style={{
@@ -44,76 +43,70 @@ const Landing = () => {
         flexDirection: 'column', 
         justifyContent: 'center', 
         alignItems: 'center', 
-        padding: '60px 20px',
+        padding: '20px 20px',
         textAlign: 'center',
         background: 'linear-gradient(135deg, rgba(0, 56, 147, 0.05) 0%, rgba(204, 30, 60, 0.05) 100%)'
       }}>
-        <div style={{
-          backgroundColor: 'rgba(204, 30, 60, 0.1)',
-          color: 'var(--accent-primary)',
-          padding: '8px 16px',
-          borderRadius: '20px',
-          fontWeight: '600',
-          fontSize: '0.9rem',
-          marginBottom: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <FaRocket /> Plataforma Oficial 2026
-        </div>
         
+        <img 
+          src="/logo-horizontal-300x99.png" 
+          alt="UTMACH Logo Oficial" 
+          style={{ width: '100%', maxWidth: '280px', marginBottom: '24px' }} 
+        />
+
         <h1 style={{ 
-          fontSize: 'clamp(2.5rem, 5vw, 4rem)', 
+          fontSize: 'clamp(2rem, 4vw, 3.5rem)', 
           fontWeight: '800', 
           color: 'var(--primary-color)',
           maxWidth: '800px',
           lineHeight: '1.2',
-          margin: '0 0 24px 0'
+          margin: '0 0 16px 0'
         }}>
-          Sistema de Mentorías Académicas de la <span style={{ color: 'var(--accent-primary)' }}>UTMACH</span>
+          Sistema de Mentorías Académicas
         </h1>
         
         <p style={{ 
-          fontSize: 'clamp(1.1rem, 2vw, 1.3rem)', 
+          fontSize: 'clamp(1rem, 1.8vw, 1.2rem)', 
           color: 'var(--text-secondary)',
           maxWidth: '650px',
-          margin: '0 0 40px 0',
-          lineHeight: '1.6'
+          margin: '0 0 30px 0',
+          lineHeight: '1.5'
         }}>
           Conecta con mentores especializados, organiza tus sesiones de estudio y alcanza la excelencia académica. Una plataforma diseñada para el éxito estudiantil.
         </p>
         
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
           <Link to="/login" style={{
-            padding: '16px 32px',
-            backgroundColor: 'var(--primary-color)',
+            padding: '18px 40px',
+            backgroundColor: 'var(--accent-primary)',
             color: '#ffffff',
             textDecoration: 'none',
-            borderRadius: '8px',
-            fontWeight: '600',
-            fontSize: '1.1rem',
+            borderRadius: '12px',
+            fontWeight: 'bold',
+            fontSize: '1.2rem',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            boxShadow: '0 4px 14px rgba(0, 56, 147, 0.3)',
-            transition: 'transform 0.2s, box-shadow 0.2s'
+            gap: '12px',
+            boxShadow: '0 8px 24px rgba(204, 30, 60, 0.4)',
+            transition: 'transform 0.2s, box-shadow 0.2s, filter 0.2s'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 56, 147, 0.4)';
+            e.currentTarget.style.transform = 'translateY(-3px)';
+            e.currentTarget.style.boxShadow = '0 12px 30px rgba(204, 30, 60, 0.5)';
+            e.currentTarget.style.filter = 'brightness(1.1)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 56, 147, 0.3)';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(204, 30, 60, 0.4)';
+            e.currentTarget.style.filter = 'brightness(1)';
           }}
           >
-            Acceder al Sistema <FaChevronRight style={{ fontSize: '0.9rem' }} />
+            Acceder al Sistema <FaChevronRight style={{ fontSize: '1rem' }} />
           </Link>
         </div>
 
         {/* Features Preview */}
-        <div style={{ display: 'flex', gap: '40px', marginTop: '80px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', gap: '40px', marginTop: '50px', flexWrap: 'wrap', justifyContent: 'center' }}>
           
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', maxWidth: '250px' }}>
             <div style={{ 

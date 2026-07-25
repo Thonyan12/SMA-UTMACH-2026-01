@@ -42,12 +42,10 @@ const Layout = () => {
         display: 'flex',
         flexDirection: 'column'
       }}>
-        <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)' }}>
-          <h2 style={{ fontSize: '1.25rem', color: 'var(--accent-primary)', margin: 0 }}>
-            UTMACH SMA
-          </h2>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            Mentorías Académicas
+        <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <img src="/logo-horizontal-300x99.png" alt="UTMACH Logo" style={{ width: '100%', maxWidth: '180px', marginBottom: '8px' }} />
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '500' }}>
+            Sistema de Mentorías
           </span>
         </div>
 
