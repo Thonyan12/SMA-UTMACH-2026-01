@@ -5,6 +5,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import Solicitudes from './pages/Solicitudes';
+import Agenda from './pages/Agenda';
 
 function App() {
   return (
@@ -18,8 +20,8 @@ function App() {
           <Route path="/" element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route index element={<Home />} />
-              <Route path="solicitudes" element={<div style={{ padding: '24px' }}><h2>Página de Solicitudes (En construcción)</h2></div>} />
-              <Route path="agenda" element={<div style={{ padding: '24px' }}><h2>Página de Agenda (En construcción)</h2></div>} />
+              <Route path="solicitudes" element={<Solicitudes />} />
+              <Route path="agenda" element={<Agenda />} />
             </Route>
           </Route>
 
