@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
@@ -7,6 +8,15 @@ from app.routers import catalogs, users, academic, actors, processes, auth
 from app.core.dependencies import get_current_user
 
 app = FastAPI()
+
+# Configuración de CORS para permitir al frontend comunicarse con la API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Auth (público)
 app.include_router(auth.router, prefix="/api/auth", tags=["Autenticación"])

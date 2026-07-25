@@ -1,13 +1,14 @@
 from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, Boolean, text
 from sqlalchemy.orm import relationship
 from datetime import datetime
+import uuid
 
 from app.database import Base
 
 class Cuenta(Base):
     __tablename__ = "cuentas"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    uuid = Column(String(32), unique=True, index=True) # RAW(16) in Oracle, often handled as string in SQLAlchemy
+    uuid = Column(String(32), unique=True, index=True, default=lambda: uuid.uuid4().hex) # RAW(16) in Oracle, often handled as string in SQLAlchemy
     correo = Column(String(180), unique=True, index=True, nullable=False)
     password_hash = Column(String(500), nullable=False)
     ultimo_acceso = Column(TIMESTAMP)

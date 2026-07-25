@@ -6,7 +6,8 @@ from sqlalchemy.orm import joinedload
 
 from app.core.config import settings
 from app.database import get_db
-from app.models.users import Cuenta
+from app.models.users import Cuenta, CuentaRol
+from app.models.users import Cuenta, CuentaRol
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -25,8 +26,9 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise credentials_exception
 
     # Load cuenta with its roles eager-loaded to avoid N+1 queries when checking roles
+    # Load cuenta with its roles eager-loaded to avoid N+1 queries when checking roles
     user = db.query(Cuenta).options(
-        joinedload(Cuenta.roles).joinedload("rol")
+        joinedload(Cuenta.roles).joinedload(CuentaRol.rol)
     ).filter(Cuenta.correo == correo).first()
 
     if user is None:
