@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { FaVideo, FaTrashAlt, FaSpinner } from 'react-icons/fa';
 import api from '../api/axios';
+import { AuthContext } from '../context/AuthContext';
 
 const Agenda = () => {
+  const { user } = useContext(AuthContext);
   const [sesiones, setSesiones] = useState([]);
   const [solicitudes, setSolicitudes] = useState([]);
   const [estudiantes, setEstudiantes] = useState([]);
@@ -23,10 +25,23 @@ const Agenda = () => {
         api.get('/academic/materias/')
       ]);
       
-      const activas = sesRes.data.filter(s => s.estado_sesion !== 'cancelada');
+      let activas = sesRes.data.filter(s => s.estado_sesion !== 'cancelada');
+      let solicitudesData = solRes.data;
+
+      const isEstudiante = user?.roles?.includes('estudiante');
+      const isMentor = user?.roles?.includes('mentor');
+
+      if (isEstudiante && user?.estudiante_id) {
+        solicitudesData = solicitudesData.filter(s => s.estudiante_id === user.estudiante_id);
+        activas = activas.filter(s => solicitudesData.some(sol => sol.id === s.solicitud_id));
+      } else if (isMentor && user?.mentor_id) {
+        solicitudesData = solicitudesData.filter(s => s.mentor_id === user.mentor_id);
+        activas = activas.filter(s => solicitudesData.some(sol => sol.id === s.solicitud_id));
+      }
+
       setSesiones(activas.sort((a, b) => new Date(a.inicio) - new Date(b.inicio)));
       
-      setSolicitudes(solRes.data);
+      setSolicitudes(solicitudesData);
       setEstudiantes(estRes.data);
       setPerfilesAcademicos(paRes.data);
       setPerfiles(perfRes.data);

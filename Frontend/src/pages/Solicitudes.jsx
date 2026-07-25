@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { FaPlus, FaCheck, FaTimes, FaSpinner } from 'react-icons/fa';
 import api from '../api/axios';
+import { AuthContext } from '../context/AuthContext';
 
 const Solicitudes = () => {
+  const { user } = useContext(AuthContext);
   const [solicitudes, setSolicitudes] = useState([]);
   const [materias, setMaterias] = useState([]);
   const [estudiantes, setEstudiantes] = useState([]);
@@ -30,7 +32,18 @@ const Solicitudes = () => {
         api.get('/users/perfiles/') // asumiendo que este es el endpoint para perfiles
       ]);
       
-      setSolicitudes(solRes.data.sort((a, b) => b.id - a.id));
+      let solData = solRes.data.sort((a, b) => b.id - a.id);
+      
+      const isEstudiante = user?.roles?.includes('estudiante');
+      const isMentor = user?.roles?.includes('mentor');
+      
+      if (isEstudiante && user?.estudiante_id) {
+        solData = solData.filter(s => s.estudiante_id === user.estudiante_id);
+      } else if (isMentor && user?.mentor_id) {
+        solData = solData.filter(s => s.mentor_id === user.mentor_id);
+      }
+
+      setSolicitudes(solData);
       setMaterias(matRes.data);
       setEstudiantes(estRes.data);
       setPerfilesAcademicos(paRes.data);
@@ -115,19 +128,21 @@ const Solicitudes = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', marginBottom: '4px' }}>Gestión de Solicitudes</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Administra las solicitudes de mentoría de los estudiantes.</p>
+          <h1 style={{ fontSize: '1.8rem', margin: '0 0 8px 0' }}>Gestión de Solicitudes</h1>
+          <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Administra las solicitudes de mentorías académicas.</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowModal(true)}>
-          <FaPlus /> Nueva Solicitud
-        </button>
+        {user?.roles?.includes('estudiante') && (
+          <button className="btn-primary" onClick={() => setShowModal(true)}>
+            <FaPlus /> Nueva Solicitud
+          </button>
+        )}
       </div>
 
       <div className="card-panel">
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>ID</th>
+              {user?.roles?.includes('administrador') && <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>ID</th>}
               <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estudiante / Materia</th>
               <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Descripción</th>
               <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estado</th>
@@ -137,18 +152,18 @@ const Solicitudes = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <td colSpan={user?.roles?.includes('administrador') ? "5" : "4"} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <FaSpinner className="fa-spin" style={{ marginRight: '8px' }} /> Cargando solicitudes...
                 </td>
               </tr>
             ) : solicitudes.length === 0 ? (
               <tr>
-                <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No se encontraron solicitudes registradas.</td>
+                <td colSpan={user?.roles?.includes('administrador') ? "5" : "4"} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No se encontraron solicitudes registradas.</td>
               </tr>
             ) : (
               solicitudes.map((sol) => (
                 <tr key={sol.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '16px 24px', fontWeight: '500' }}>{sol.id}</td>
+                  {user?.roles?.includes('administrador') && <td style={{ padding: '16px 24px', fontWeight: '500' }}>{sol.id}</td>}
                   <td style={{ padding: '16px 24px' }}>
                     <div style={{ fontWeight: '500' }}>{getEstudianteName(sol.estudiante_id)}</div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--accent-primary)' }}>{getMateriaName(sol.materia_id)}</div>
@@ -175,23 +190,29 @@ const Solicitudes = () => {
                     </span>
                   </td>
                   <td style={{ padding: '16px 24px' }}>
-                    {sol.estado_solicitud === 'pendiente' && (
+                    {!user?.roles?.includes('estudiante') && sol.estado_solicitud === 'pendiente' ? (
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button 
-                          style={{ background: 'transparent', border: 'none', color: 'var(--success)', cursor: 'pointer', padding: '4px' }}
+                          className="btn-primary"
+                          style={{ padding: '8px 12px', fontSize: '0.85rem' }}
                           title="Aprobar"
                           onClick={() => handleUpdateState(sol.id, 'aprobada')}
                         >
-                          <FaCheck size={18} />
+                          <FaCheck />
                         </button>
                         <button 
-                          style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}
+                          className="btn-secondary"
+                          style={{ padding: '8px 12px', fontSize: '0.85rem', color: 'var(--danger)', borderColor: 'var(--danger)' }}
                           title="Rechazar"
                           onClick={() => handleUpdateState(sol.id, 'rechazada')}
                         >
-                          <FaTimes size={18} />
+                          <FaTimes />
                         </button>
                       </div>
+                    ) : (
+                      <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                        Sin acciones
+                      </span>
                     )}
                   </td>
                 </tr>

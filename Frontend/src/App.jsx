@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import Landing from './pages/Landing';
 import Solicitudes from './pages/Solicitudes';
 import Agenda from './pages/Agenda';
 
@@ -14,10 +15,11 @@ function App() {
       <BrowserRouter>
         <Routes>
           {/* Rutas Públicas */}
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
 
           {/* Rutas Privadas Protegidas */}
-          <Route path="/" element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route index element={<Home />} />
               <Route path="solicitudes" element={<Solicitudes />} />

@@ -1,20 +1,39 @@
 import React, { useContext } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { FaHome, FaCalendarAlt, FaUserGraduate, FaSignOutAlt } from 'react-icons/fa';
+import { FaHome, FaCalendarAlt, FaUserGraduate, FaSignOutAlt, FaClipboardList } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 
 const Layout = () => {
   const location = useLocation();
   const { user, logout } = useContext(AuthContext);
 
-  const menuItems = [
-    { path: '/', label: 'Inicio', icon: <FaHome /> },
-    { path: '/solicitudes', label: 'Solicitudes', icon: <FaUserGraduate /> },
-    { path: '/agenda', label: 'Agenda', icon: <FaCalendarAlt /> },
-  ];
+  const isAdmin = user?.roles?.includes('administrador');
+  const isEstudiante = user?.roles?.includes('estudiante');
+  const isMentor = user?.roles?.includes('mentor');
+
+  const getMenuItems = () => {
+    const items = [
+      { path: '/dashboard', label: 'Inicio', icon: <FaHome /> }
+    ];
+
+    if (isEstudiante) {
+      items.push({ path: '/dashboard/solicitudes', label: 'Mis Solicitudes', icon: <FaClipboardList /> });
+      items.push({ path: '/dashboard/agenda', label: 'Mi Agenda', icon: <FaCalendarAlt /> });
+    } else if (isMentor) {
+      items.push({ path: '/dashboard/solicitudes', label: 'Solicitudes Entrantes', icon: <FaClipboardList /> });
+      items.push({ path: '/dashboard/agenda', label: 'Mi Agenda', icon: <FaCalendarAlt /> });
+    } else {
+      // Default / Admin
+      items.push({ path: '/dashboard/solicitudes', label: 'Todas las Solicitudes', icon: <FaClipboardList /> });
+      items.push({ path: '/dashboard/agenda', label: 'Agenda Global', icon: <FaCalendarAlt /> });
+    }
+    return items;
+  };
+
+  const menuItems = getMenuItems();
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
       {/* Sidebar Sobrio e Institucional */}
       <aside style={{ 
         width: '250px', 
@@ -110,9 +129,11 @@ const Layout = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ textAlign: 'right' }}>
               <p style={{ margin: 0, fontWeight: '600', fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-                {user ? user.correo : 'Usuario UTMACH'}
+                {user?.nombres ? `${user.nombres} ${user.apellidos}` : 'Usuario UTMACH'}
               </p>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Cuenta Activa</p>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                {isAdmin ? 'Administrador' : isMentor ? 'Mentor' : isEstudiante ? 'Estudiante' : 'Cuenta Activa'}
+              </p>
             </div>
             <div style={{ 
               width: '40px', 
@@ -126,7 +147,7 @@ const Layout = () => {
               fontWeight: 'bold',
               textTransform: 'uppercase'
             }}>
-              {user && user.correo ? user.correo.charAt(0) : 'U'}
+              {user?.nombres ? user.nombres.charAt(0) : (user?.correo ? user.correo.charAt(0) : 'U')}
             </div>
           </div>
         </header>

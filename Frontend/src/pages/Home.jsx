@@ -1,8 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { FaUserGraduate, FaChalkboardTeacher, FaCalendarCheck } from 'react-icons/fa';
 import api from '../api/axios';
+import { AuthContext } from '../context/AuthContext';
 
 const Home = () => {
+  const { user } = useContext(AuthContext);
+  
+  const isAdmin = user?.roles?.includes('administrador');
+  const isEstudiante = user?.roles?.includes('estudiante');
+  const isMentor = user?.roles?.includes('mentor');
+
   const [stats, setStats] = useState({ mentores: 0, sesiones: 0, solicitudes: 0 });
   const [actividad, setActividad] = useState([]);
   const [materias, setMaterias] = useState([]);
@@ -25,8 +32,16 @@ const Home = () => {
         ]);
 
         const mentores = mentoresRes.data;
-        const sesiones = sesionesRes.data;
-        const solicitudes = solicitudesRes.data;
+        let sesiones = sesionesRes.data;
+        let solicitudes = solicitudesRes.data;
+
+        if (isEstudiante && user?.estudiante_id) {
+          solicitudes = solicitudes.filter(s => s.estudiante_id === user.estudiante_id);
+          sesiones = sesiones.filter(s => solicitudes.some(sol => sol.id === s.solicitud_id));
+        } else if (isMentor && user?.mentor_id) {
+          solicitudes = solicitudes.filter(s => s.mentor_id === user.mentor_id);
+          sesiones = sesiones.filter(s => solicitudes.some(sol => sol.id === s.solicitud_id));
+        }
 
         setMaterias(matRes.data);
         setEstudiantes(estRes.data);
@@ -81,10 +96,14 @@ const Home = () => {
 
   return (
     <div>
-      <h1 style={{ fontSize: '1.8rem', marginBottom: '8px' }}>Panel Principal</h1>
-      <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>
-        Bienvenido al Sistema de Mentorías Académicas de la UTMACH.
-      </p>
+      <div style={{ marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '2rem', marginBottom: '8px' }}>
+          Bienvenido {isAdmin ? 'Administrador' : isMentor ? 'Mentor' : 'Estudiante'}: {user?.nombres ? `${user.nombres} ${user.apellidos}` : 'Usuario'}
+        </h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>
+          Aquí tienes un resumen de la actividad reciente.
+        </p>
+      </div>
 
       {/* Tarjetas de Resumen (Dashboard) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '40px' }}>
@@ -133,7 +152,7 @@ const Home = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Solicitud ID</th>
+              {isAdmin && <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Solicitud ID</th>}
               <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estudiante</th>
               <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estado</th>
               <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Fecha Creada</th>
@@ -142,16 +161,16 @@ const Home = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="4" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando actividad...</td>
+                <td colSpan={isAdmin ? "4" : "3"} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando actividad...</td>
               </tr>
             ) : actividad.length === 0 ? (
               <tr>
-                <td colSpan="4" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay actividad reciente.</td>
+                <td colSpan={isAdmin ? "4" : "3"} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay actividad reciente.</td>
               </tr>
             ) : (
               actividad.map((act) => (
                 <tr key={act.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '16px 24px', fontWeight: '500' }}>{act.id}</td>
+                  {isAdmin && <td style={{ padding: '16px 24px', fontWeight: '500' }}>{act.id}</td>}
                   <td style={{ padding: '16px 24px' }}>{getEstudianteName(act.estudiante_id)}</td>
                   <td style={{ padding: '16px 24px' }}>
                     <span style={{ 

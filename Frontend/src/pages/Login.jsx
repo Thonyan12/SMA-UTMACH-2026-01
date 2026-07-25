@@ -19,7 +19,7 @@ const Login = () => {
 
     try {
       await login(correo, password);
-      navigate('/'); // Redirigir al Home en caso de éxito
+      navigate('/dashboard'); // Redirigir al Dashboard en caso de éxito
     } catch (err) {
       if (err.response && err.response.status === 401) {
         setError('Credenciales incorrectas. Verifica tu correo y contraseña.');
