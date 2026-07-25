@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
@@ -26,6 +26,9 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
         )
     if user.estado != 1:
         raise HTTPException(status_code=400, detail="Usuario inactivo")
+        
+    user.ultimo_acceso = datetime.utcnow()
+    db.commit()
         
     access_token = create_access_token(data={"sub": user.correo})
     return {"access_token": access_token, "token_type": "bearer"}
@@ -58,13 +61,22 @@ def read_users_me(current_user: Cuenta = Depends(get_current_user), db: Session 
     
     estudiante_id = None
     mentor_id = None
+    carrera_nombre = None
+    semestre = None
     
     if perfil_id:
+        # Avoid circular import or do local import if needed, but Carrera is imported or available?
+        from app.models.academic import PerfilAcademico, Carrera
         pa = db.query(PerfilAcademico).filter(PerfilAcademico.perfil_id == perfil_id).first()
         if pa:
+            carrera = db.query(Carrera).filter(Carrera.id == pa.carrera_id).first()
+            if carrera:
+                carrera_nombre = carrera.nombre
+
             est = db.query(Estudiante).filter(Estudiante.academico_id == pa.id).first()
             if est:
                 estudiante_id = est.id
+                semestre = est.semestre
             
             men = db.query(Mentor).filter(Mentor.academico_id == pa.id).first()
             if men:
@@ -83,7 +95,9 @@ def read_users_me(current_user: Cuenta = Depends(get_current_user), db: Session 
         "nombres": perfil.nombres if perfil else None,
         "apellidos": perfil.apellidos if perfil else None,
         "estudiante_id": estudiante_id,
-        "mentor_id": mentor_id
+        "mentor_id": mentor_id,
+        "carrera_nombre": carrera_nombre,
+        "semestre": semestre
     }
     
     return response_data

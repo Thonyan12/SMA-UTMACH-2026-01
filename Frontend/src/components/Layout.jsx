@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { FaHome, FaCalendarAlt, FaUserGraduate, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck } from 'react-icons/fa';
+import { FaHome, FaCalendarAlt, FaUserGraduate, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck, FaUserCircle } from 'react-icons/fa';
 import api from '../api/axios';
 import { Toaster } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
@@ -33,6 +33,10 @@ const Layout = () => {
       items.push({ path: '/dashboard/solicitudes', label: 'Todas las Solicitudes', icon: <FaClipboardList /> });
       items.push({ path: '/dashboard/agenda', label: 'Agenda Global', icon: <FaCalendarAlt /> });
     }
+    
+    // Add profile to all
+    items.push({ path: '/dashboard/perfil', label: 'Mi Perfil', icon: <FaUserCircle /> });
+
     return items;
   };
 

@@ -15,6 +15,13 @@ export const AuthProvider = ({ children }) => {
     if (token && storedUser) {
       try {
         setUser(JSON.parse(storedUser));
+        // Silently fetch updated data from server to keep context fresh
+        api.get('/auth/me').then(res => {
+          localStorage.setItem('user', JSON.stringify(res.data));
+          setUser(res.data);
+        }).catch(err => {
+          console.error("Failed to refresh user data", err);
+        });
       } catch (e) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');

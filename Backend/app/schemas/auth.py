@@ -24,3 +24,5 @@ class AuthMeResponse(CuentaResponse):
     apellidos: Optional[str] = None
     estudiante_id: Optional[int] = None
     mentor_id: Optional[int] = None
+    carrera_nombre: Optional[str] = None
+    semestre: Optional[int] = None

@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Landing from './pages/Landing';
 import Solicitudes from './pages/Solicitudes';
 import Agenda from './pages/Agenda';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
               <Route index element={<Home />} />
               <Route path="solicitudes" element={<Solicitudes />} />
               <Route path="agenda" element={<Agenda />} />
+              <Route path="perfil" element={<Profile />} />
             </Route>
           </Route>
 
