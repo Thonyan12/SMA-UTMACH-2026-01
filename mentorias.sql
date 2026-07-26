@@ -743,13 +743,18 @@
             p_enlace IN VARCHAR2
         ) IS
             v_mentor_id NUMBER;
+            v_estudiante_id NUMBER;
             v_overlap_count NUMBER;
+            v_overlap_count_est NUMBER;
         BEGIN
-            SELECT mentor_id INTO v_mentor_id FROM solicitudes_mentoria WHERE id = p_solicitud_id;
+            SELECT mentor_id, estudiante_id INTO v_mentor_id, v_estudiante_id 
+            FROM solicitudes_mentoria WHERE id = p_solicitud_id;
+            
             IF v_mentor_id IS NULL THEN
                 RAISE_APPLICATION_ERROR(-20006, 'La solicitud no tiene mentor asignado.');
             END IF;
 
+            -- Validación de solapamiento para el Mentor
             SELECT COUNT(*) INTO v_overlap_count
             FROM sesiones_mentoria ses
             JOIN solicitudes_mentoria sol ON sol.id = ses.solicitud_id
@@ -763,6 +768,22 @@
 
             IF v_overlap_count > 0 THEN
                 RAISE_APPLICATION_ERROR(-20005, 'El mentor ya tiene una sesión programada que se solapa.');
+            END IF;
+
+            -- Validación de solapamiento para el Estudiante
+            SELECT COUNT(*) INTO v_overlap_count_est
+            FROM sesiones_mentoria ses
+            JOIN solicitudes_mentoria sol ON sol.id = ses.solicitud_id
+            WHERE sol.estudiante_id = v_estudiante_id
+            AND ses.estado_sesion NOT IN ('cancelada')
+            AND (
+                (p_inicio >= ses.inicio AND p_inicio < ses.fin) OR
+                (p_fin > ses.inicio AND p_fin <= ses.fin) OR
+                (p_inicio <= ses.inicio AND p_fin >= ses.fin)
+            );
+
+            IF v_overlap_count_est > 0 THEN
+                RAISE_APPLICATION_ERROR(-20007, 'El estudiante ya tiene una sesión programada que se solapa en este horario.');
             END IF;
 
             INSERT INTO sesiones_mentoria (solicitud_id, inicio, fin, enlace_teams, estado_sesion)
@@ -927,11 +948,11 @@
     BEFORE INSERT OR UPDATE ON solicitudes_mentoria
     FOR EACH ROW
     BEGIN
-        IF :NEW.estado_solicitud != 'aceptada' AND :NEW.mentor_id IS NOT NULL THEN
-            RAISE_APPLICATION_ERROR(-20009, 'No se puede asignar un mentor_id si el estado_solicitud no es aceptada.');
+        IF :NEW.estado_solicitud = 'pendiente' AND :NEW.mentor_id IS NOT NULL THEN
+            RAISE_APPLICATION_ERROR(-20009, 'Una solicitud pendiente no puede tener un mentor asignado.');
         END IF;
         IF :NEW.estado_solicitud = 'aceptada' AND :NEW.mentor_id IS NULL THEN
-            RAISE_APPLICATION_ERROR(-20010, 'Una solicitud aceptada debe tener obligatoriamente un mentor_id asignado.');
+            RAISE_APPLICATION_ERROR(-20010, 'Una solicitud aceptada debe tener obligatoriamente un mentor asignado.');
         END IF;
     END;
     /

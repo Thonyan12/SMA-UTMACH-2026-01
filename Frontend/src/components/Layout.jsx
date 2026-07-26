@@ -1,6 +1,6 @@
-import React, { useContext, useState, useEffect, useRef } from 'react';
+import React, { useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { FaHome, FaCalendarAlt, FaUserGraduate, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck, FaUserCircle } from 'react-icons/fa';
+import { FaHome, FaCalendarAlt, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck, FaUserCircle } from 'react-icons/fa';
 import api from '../api/axios';
 import { Toaster } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
@@ -42,7 +42,7 @@ const Layout = () => {
 
   const menuItems = getMenuItems();
 
-  const fetchNotificaciones = async () => {
+  const fetchNotificaciones = useCallback(async () => {
     if (!user?.id) return;
     try {
       const res = await api.get(`/processes/notificaciones/cuenta/${user.id}`);
@@ -50,14 +50,14 @@ const Layout = () => {
     } catch (error) {
       console.error('Error fetching notificaciones:', error);
     }
-  };
+  }, [user?.id]);
 
   useEffect(() => {
     fetchNotificaciones();
     // Poll every 30 seconds for new notifications
     const interval = setInterval(fetchNotificaciones, 30000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [fetchNotificaciones]);
 
   // Click outside listener for notifications dropdown
   useEffect(() => {

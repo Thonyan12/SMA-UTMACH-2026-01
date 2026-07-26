@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { FaPlus, FaCheck, FaTimes, FaSpinner, FaUserCircle } from 'react-icons/fa';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { FaPlus, FaCheck, FaTimes, FaUserCircle } from 'react-icons/fa';
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -32,7 +32,7 @@ const Solicitudes = () => {
   
   const BAD_WORDS = ['puta', 'mierda', 'pendejo', 'idiota', 'estupido', 'cojudo', 'verga', 'cabron', 'maricon', 'perra'];
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [solRes, matRes, estRes, mentRes, paRes, perfRes, carRes, facRes, cmRes] = await Promise.all([
@@ -72,11 +72,11 @@ const Solicitudes = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   // Funciones de mapeo
   const getMateriaName = (id) => {

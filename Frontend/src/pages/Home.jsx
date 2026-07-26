@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { FaUserGraduate, FaChalkboardTeacher, FaCalendarCheck, FaClipboardList } from 'react-icons/fa';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { FaUserGraduate, FaChalkboardTeacher, FaCalendarCheck } from 'react-icons/fa';
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -23,74 +23,74 @@ const Home = () => {
   // Para el admin dashboard
   const [dashboardStats, setDashboardStats] = useState(null);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const promises = [
-          api.get('/actors/mentores/'),
-          api.get('/processes/sesiones-mentoria/'),
-          api.get('/processes/solicitudes-mentoria/'),
-          api.get('/academic/materias/'),
-          api.get('/actors/estudiantes/'),
-          api.get('/academic/perfiles-academicos/'),
-          api.get('/users/perfiles/'),
-          api.get('/academic/carreras/')
-        ];
-        
-        if (isAdmin) {
-          promises.push(api.get('/processes/estadisticas/'));
-        }
-
-        const res = await Promise.all(promises);
-        
-        const mentoresRes = res[0];
-        const sesionesRes = res[1];
-        const solicitudesRes = res[2];
-        const matRes = res[3];
-        const estRes = res[4];
-        const paRes = res[5];
-        const perfRes = res[6];
-        const carRes = res[7];
-
-        if (isAdmin && res[8]) {
-          setDashboardStats(res[8].data);
-        }
-
-        const mentores = mentoresRes.data;
-        let sesiones = sesionesRes.data;
-        let solicitudes = solicitudesRes.data;
-
-        if (isEstudiante && user?.estudiante_id) {
-          solicitudes = solicitudes.filter(s => s.estudiante_id === user.estudiante_id);
-          sesiones = sesiones.filter(s => solicitudes.some(sol => sol.id === s.solicitud_id));
-        } else if (isMentor && user?.mentor_id) {
-          solicitudes = solicitudes.filter(s => s.mentor_id === user.mentor_id);
-          sesiones = sesiones.filter(s => solicitudes.some(sol => sol.id === s.solicitud_id));
-        }
-
-        setMaterias(matRes.data);
-        setEstudiantes(estRes.data);
-        setPerfilesAcademicos(paRes.data);
-        setPerfiles(perfRes.data);
-        setCarreras(carRes.data);
-
-        setStats({
-          mentores: mentores.length,
-          sesiones: sesiones.length,
-          solicitudes: solicitudes.filter(s => s.estado_solicitud === 'pendiente').length
-        });
-
-        // Tomar las últimas 5 solicitudes como "Actividad Reciente"
-        setActividad(solicitudes.slice(-5).reverse());
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      const promises = [
+        api.get('/actors/mentores/'),
+        api.get('/processes/sesiones-mentoria/'),
+        api.get('/processes/solicitudes-mentoria/'),
+        api.get('/academic/materias/'),
+        api.get('/actors/estudiantes/'),
+        api.get('/academic/perfiles-academicos/'),
+        api.get('/users/perfiles/'),
+        api.get('/academic/carreras/')
+      ];
+      
+      if (isAdmin) {
+        promises.push(api.get('/processes/estadisticas/'));
       }
-    };
 
+      const res = await Promise.all(promises);
+      
+      const mentoresRes = res[0];
+      const sesionesRes = res[1];
+      const solicitudesRes = res[2];
+      const matRes = res[3];
+      const estRes = res[4];
+      const paRes = res[5];
+      const perfRes = res[6];
+      const carRes = res[7];
+
+      if (isAdmin && res[8]) {
+        setDashboardStats(res[8].data);
+      }
+
+      const mentores = mentoresRes.data;
+      let sesiones = sesionesRes.data;
+      let solicitudes = solicitudesRes.data;
+
+      if (isEstudiante && user?.estudiante_id) {
+        solicitudes = solicitudes.filter(s => s.estudiante_id === user.estudiante_id);
+        sesiones = sesiones.filter(s => solicitudes.some(sol => sol.id === s.solicitud_id));
+      } else if (isMentor && user?.mentor_id) {
+        solicitudes = solicitudes.filter(s => s.mentor_id === user.mentor_id);
+        sesiones = sesiones.filter(s => solicitudes.some(sol => sol.id === s.solicitud_id));
+      }
+
+      setMaterias(matRes.data);
+      setEstudiantes(estRes.data);
+      setPerfilesAcademicos(paRes.data);
+      setPerfiles(perfRes.data);
+      setCarreras(carRes.data);
+
+      setStats({
+        mentores: mentores.length,
+        sesiones: sesiones.length,
+        solicitudes: solicitudes.filter(s => s.estado_solicitud === 'pendiente').length
+      });
+
+      // Tomar las últimas 5 solicitudes como "Actividad Reciente"
+      setActividad(solicitudes.slice(-5).reverse());
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAdmin, isEstudiante, isMentor, user]);
+
+  useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [fetchDashboardData]);
 
   const formatDate = (isoString) => {
     if (!isoString) return 'N/A';

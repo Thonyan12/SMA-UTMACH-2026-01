@@ -1,3 +1,4 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -24,6 +25,14 @@ router = APIRouter()
 # ==========================================
 # Funciones Auxiliares para Notificaciones
 # ==========================================
+
+def parse_oracle_error(e: Exception) -> str:
+    error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+    match = re.search(r'ORA-\d+:\s*(.*)', error_msg)
+    if match:
+        return match.group(1).split('\n')[0].strip()
+    return "Ocurrió un error de validación en la base de datos."
+
 def get_cuenta_id_for_estudiante(db: Session, estudiante_id: int):
     est = db.query(Estudiante).filter(Estudiante.id == estudiante_id).first()
     if est:
@@ -141,8 +150,7 @@ def create_solicitud_mentoria(item: SolicitudMentoriaCreate, db: Session = Depen
         return {"message": "Solicitud creada exitosamente a través de PKG_MENTORIAS"}
     except DatabaseError as e:
         db.rollback()
-        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
-        raise HTTPException(status_code=400, detail=error_msg)
+        raise HTTPException(status_code=400, detail=parse_oracle_error(e))
 
 @router.put("/solicitudes-mentoria/{id}", response_model=SolicitudMentoriaResponse)
 def update_solicitud_mentoria(id: int, item: SolicitudMentoriaUpdate, db: Session = Depends(get_db)):
@@ -238,8 +246,7 @@ def create_sesion_mentoria(item: SesionMentoriaCreate, db: Session = Depends(get
         return {"message": "Sesión programada exitosamente a través de PKG_MENTORIAS"}
     except DatabaseError as e:
         db.rollback()
-        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
-        raise HTTPException(status_code=400, detail=error_msg)
+        raise HTTPException(status_code=400, detail=parse_oracle_error(e))
 
 @router.put("/sesiones-mentoria/{id}", response_model=SesionMentoriaResponse)
 def update_sesion_mentoria(id: int, item: SesionMentoriaUpdate, db: Session = Depends(get_db)):

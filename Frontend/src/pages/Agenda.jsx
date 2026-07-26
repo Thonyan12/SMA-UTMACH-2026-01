@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { FaVideo, FaTrashAlt, FaSpinner, FaCheck, FaStar } from 'react-icons/fa';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { FaVideo, FaTrashAlt, FaCheck, FaStar } from 'react-icons/fa';
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -25,7 +25,7 @@ const Agenda = () => {
   });
   const [submittingRating, setSubmittingRating] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [sesRes, solRes, estRes, paRes, perfRes, matRes, calRes] = await Promise.all([
@@ -65,11 +65,11 @@ const Agenda = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleCancel = async (id) => {
     if (!window.confirm('¿Estás seguro de que deseas cancelar esta sesión?')) return;
