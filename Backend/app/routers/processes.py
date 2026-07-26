@@ -1,7 +1,7 @@
 import re
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, func
 from sqlalchemy.exc import DatabaseError
 from typing import List
 
@@ -9,7 +9,7 @@ from app.database import get_db
 from app.models.processes import (
     SolicitudMentoria, SesionMentoria, Calificacion, Notificacion, HistorialCambio
 )
-from app.models.actors import Estudiante, Mentor, MentorEspecialidad
+from app.models.actors import Estudiante, Mentor, MentorEspecialidad, DisponibilidadMentor
 from app.models.academic import PerfilAcademico
 from app.models.users import Perfil
 from app.schemas.processes import (
@@ -292,32 +292,85 @@ def create_solicitud_mentoria(item: SolicitudMentoriaCreate, db: Session = Depen
         ).order_by(SolicitudMentoria.id.desc()).first()
         
         if solicitud:
-            import random
-            # Buscar un mentor aprobado que dicte esta materia
-            mentores_esp = db.query(MentorEspecialidad).join(Mentor).filter(
-                MentorEspecialidad.materia_id == item.materia_id,
-                Mentor.estado_aprobacion == 'aprobado',
-                Mentor.estado == 1
-            ).all()
+            # 1. ¿El estudiante pidió a alguien específico?
+            mentor_asignado_id = None
             
-            if mentores_esp:
-                mentor_esp = random.choice(mentores_esp)
-                solicitud.mentor_id = mentor_esp.mentor_id
+            if item.mentor_id:
+                # Verificar que el mentor pedido enseñe la materia y esté activo
+                mentor_valido = db.query(MentorEspecialidad).join(Mentor).filter(
+                    MentorEspecialidad.materia_id == item.materia_id,
+                    MentorEspecialidad.mentor_id == item.mentor_id,
+                    Mentor.estado_aprobacion == 'aprobado',
+                    Mentor.estado == 1
+                ).first()
+                if mentor_valido:
+                    mentor_asignado_id = mentor_valido.mentor_id
+            
+            # 2. Si no pidió o el que pidió no es válido, aplicar Asignación Inteligente
+            if not mentor_asignado_id:
+                mentores_esp = db.query(MentorEspecialidad).join(Mentor).filter(
+                    MentorEspecialidad.materia_id == item.materia_id,
+                    Mentor.estado_aprobacion == 'aprobado',
+                    Mentor.estado == 1
+                ).all()
+                
+                if mentores_esp:
+                    import random
+                    mejor_score = -1
+                    mejor_mentor_id = None
+                    
+                    for me in mentores_esp:
+                        # 40% Compatibilidad (nivel de dominio 1 a 5)
+                        # Transformar a escala 0-40 (ej. nivel 5 = 40 pts, nivel 3 = 24 pts)
+                        score_compatibilidad = (me.nivel_dominio / 5.0) * 40
+                        
+                        # 30% Carga (Menos pendientes = más puntos)
+                        # Contamos cuántas solicitudes 'asignada' o 'programada' o 'pendiente' tiene activas
+                        sol_activas = db.query(func.count(SolicitudMentoria.id)).filter(
+                            SolicitudMentoria.mentor_id == me.mentor_id,
+                            SolicitudMentoria.estado_solicitud.in_(['pendiente', 'asignada', 'programada'])
+                        ).scalar()
+                        
+                        # Si sol_activas > 5, score = 0. Si 0, score = 30. (Escala inversa)
+                        carga_factor = max(0, 5 - sol_activas)
+                        score_carga = (carga_factor / 5.0) * 30
+                        
+                        # 20% Disponibilidad
+                        # Evaluamos si tiene slots registrados. (Fase 7 completará esto con el horario exacto).
+                        # Por ahora, si tiene registros en DisponibilidadMentor, le damos los 20 pts.
+                        disp_count = db.query(func.count(DisponibilidadMentor.id)).filter(
+                            DisponibilidadMentor.mentor_id == me.mentor_id
+                        ).scalar()
+                        score_disponibilidad = 20 if disp_count > 0 else 10 # Si no configuró, asume 10 pts.
+                        
+                        # 10% Aleatoriedad (Suerte)
+                        score_random = random.uniform(0, 10)
+                        
+                        total_score = score_compatibilidad + score_carga + score_disponibilidad + score_random
+                        
+                        if total_score > mejor_score:
+                            mejor_score = total_score
+                            mejor_mentor_id = me.mentor_id
+                            
+                    mentor_asignado_id = mejor_mentor_id
+
+            if mentor_asignado_id:
+                solicitud.mentor_id = mentor_asignado_id
                 solicitud.estado_solicitud = "asignada"
                 db.commit()
                 
-                # Notificar al mentor que se le ha asignado una nueva solicitud
-                m_cuenta_id = get_cuenta_id_for_mentor(db, mentor_esp.mentor_id)
+                # Notificar al mentor
+                m_cuenta_id = get_cuenta_id_for_mentor(db, mentor_asignado_id)
                 if m_cuenta_id:
                     create_system_notification(
                         db, m_cuenta_id, 
                         "Nueva Solicitud Asignada", 
-                        "Se te ha asignado automáticamente una nueva solicitud de mentoría para revisión.", 
+                        "Se te ha asignado inteligentemente una nueva solicitud de mentoría para revisión.", 
                         solicitud_id=solicitud.id
                     )
                     db.commit()
         
-        return {"message": "Solicitud creada exitosamente a través de PKG_MENTORIAS"}
+        return {"message": "Solicitud creada exitosamente a través del sistema de asignación inteligente"}
     except DatabaseError as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=parse_oracle_error(e))

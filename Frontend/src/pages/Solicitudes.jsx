@@ -4,6 +4,52 @@ import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
+const MentorSelect = ({ materiaId, estudianteId, value, onChange }) => {
+  const [mentores, setMentores] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (materiaId) {
+      setLoading(true);
+      let url = `/actors/mentores-por-materia/${materiaId}`;
+      if (estudianteId) {
+        url += `?estudiante_id=${estudianteId}`;
+      }
+      api.get(url)
+        .then(res => setMentores(res.data))
+        .catch(err => console.error(err))
+        .finally(() => setLoading(false));
+    }
+  }, [materiaId]);
+
+  return (
+    <div>
+      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+        Mentor Específico (Opcional)
+      </label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value ? parseInt(e.target.value) : '')}
+        disabled={loading || mentores.length === 0}
+        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: loading ? '#f0f0f0' : 'white' }}
+      >
+        <option value="">
+          {loading ? 'Cargando mentores...' : mentores.length === 0 ? 'Asignación Automática Inteligente (Obligatoria)' : 'Asignación Automática Inteligente (Recomendado)'}
+        </option>
+        {mentores.map(m => (
+          <option key={m.mentor_id} value={m.mentor_id}>
+            {m.nombre} (Nivel {m.nivel_dominio}/5)
+          </option>
+        ))}
+      </select>
+      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+        Si dejas esta opción vacía, el sistema asignará automáticamente al mentor más adecuado.
+      </span>
+    </div>
+  );
+};
+
+
 const Solicitudes = () => {
   const { user } = useContext(AuthContext);
   const [solicitudes, setSolicitudes] = useState([]);
@@ -217,6 +263,11 @@ const Solicitudes = () => {
         estudiante_id: user.estudiante_id,
         fecha_hora_deseada: new Date(finalDateTime).toISOString()
       };
+      
+      if (payload.mentor_id === '') {
+        payload.mentor_id = null;
+      }
+      
       await api.post('/processes/solicitudes-mentoria/', payload);
       setShowModal(false);
       setFormData({ materia_id: '', descripcion: '', prioridad: 'media' });
@@ -568,7 +619,10 @@ const Solicitudes = () => {
                 <select 
                   required
                   value={formData.materia_id}
-                  onChange={(e) => setFormData({...formData, materia_id: parseInt(e.target.value)})}
+                  onChange={(e) => {
+                    const materiaId = parseInt(e.target.value);
+                    setFormData({...formData, materia_id: materiaId, mentor_id: ''});
+                  }}
                   style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
                 >
                   <option value="" disabled>Seleccione una materia...</option>
@@ -577,6 +631,14 @@ const Solicitudes = () => {
                   ))}
                 </select>
               </div>
+              {formData.materia_id && (
+                <MentorSelect 
+                  materiaId={formData.materia_id} 
+                  estudianteId={user?.estudiante_id}
+                  value={formData.mentor_id || ''} 
+                  onChange={(val) => setFormData({...formData, mentor_id: val})} 
+                />
+              )}
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Fecha Deseada</label>

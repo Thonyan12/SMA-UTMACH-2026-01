@@ -133,6 +133,53 @@ def delete_mentor_especialidad(id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Eliminado exitosamente"}
 
+from typing import Optional
+
+@router.get("/mentores-por-materia/{materia_id}")
+def get_mentores_por_materia(materia_id: int, estudiante_id: Optional[int] = None, db: Session = Depends(get_db)):
+    from app.models.academic import PerfilAcademico
+    from app.models.users import Perfil
+    from app.models.processes import SolicitudMentoria
+    
+    mentores_esp_query = db.query(MentorEspecialidad).join(Mentor).filter(
+        MentorEspecialidad.materia_id == materia_id,
+        Mentor.estado_aprobacion == 'aprobado',
+        Mentor.estado == 1
+    )
+    
+    mentores_esp = mentores_esp_query.all()
+    
+    if estudiante_id:
+        # Buscar tutores con los que el estudiante ya ha tenido al menos una solicitud asignada/aceptada/programada/completada
+        tutores_previos = db.query(SolicitudMentoria.mentor_id).filter(
+            SolicitudMentoria.estudiante_id == estudiante_id,
+            SolicitudMentoria.mentor_id.isnot(None)
+        ).distinct().all()
+        tutores_previos_ids = [t[0] for t in tutores_previos]
+        
+        # Filtrar la lista original
+        mentores_esp = [me for me in mentores_esp if me.mentor_id in tutores_previos_ids]
+    
+    resultados = []
+    for me in mentores_esp:
+        # Get Mentor Name
+        mentor = db.query(Mentor).filter(Mentor.id == me.mentor_id).first()
+        nombre_completo = "Mentor Desconocido"
+        if mentor:
+            pa = db.query(PerfilAcademico).filter(PerfilAcademico.id == mentor.academico_id).first()
+            if pa:
+                perf = db.query(Perfil).filter(Perfil.id == pa.perfil_id).first()
+                if perf:
+                    nombre_completo = f"{perf.nombres} {perf.apellidos}"
+                    
+        resultados.append({
+            "mentor_id": me.mentor_id,
+            "nombre": nombre_completo,
+            "nivel_dominio": me.nivel_dominio
+        })
+        
+    return resultados
+
 
 # ==========================================
 # CRUD para DisponibilidadMentor
