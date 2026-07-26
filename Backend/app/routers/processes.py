@@ -65,6 +65,26 @@ def create_system_notification(db: Session, cuenta_id: int, titulo: str, mensaje
     )
     db.add(notif)
 
+def get_nombre_for_estudiante(db: Session, estudiante_id: int):
+    est = db.query(Estudiante).filter(Estudiante.id == estudiante_id).first()
+    if est:
+        pa = db.query(PerfilAcademico).filter(PerfilAcademico.id == est.academico_id).first()
+        if pa:
+            perf = db.query(Perfil).filter(Perfil.id == pa.perfil_id).first()
+            if perf:
+                return f"{perf.nombres} {perf.apellidos}"
+    return "Estudiante Desconocido"
+
+def get_nombre_for_mentor(db: Session, mentor_id: int):
+    men = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if men:
+        pa = db.query(PerfilAcademico).filter(PerfilAcademico.id == men.academico_id).first()
+        if pa:
+            perf = db.query(Perfil).filter(Perfil.id == pa.perfil_id).first()
+            if perf:
+                return f"{perf.nombres} {perf.apellidos}"
+    return "Mentor Desconocido"
+
 # ==========================================
 # CRUD para SolicitudesMentoria
 # ==========================================
@@ -93,6 +113,112 @@ def get_estadisticas(db: Session = Depends(get_db)):
         "total_solicitudes": total_solicitudes,
         "solicitudes_por_estado": solicitudes_por_estado,
         "solicitudes_por_materia": solicitudes_por_materia
+    }
+
+@router.get("/dashboard/estudiante/{estudiante_id}")
+def get_dashboard_estudiante(estudiante_id: int, db: Session = Depends(get_db)):
+    solicitudes = db.query(SolicitudMentoria).filter(SolicitudMentoria.estudiante_id == estudiante_id).all()
+    sesiones = db.query(SesionMentoria).join(SolicitudMentoria).filter(SolicitudMentoria.estudiante_id == estudiante_id).all()
+    
+    total_solicitudes = len(solicitudes)
+    solicitudes_pendientes = len([s for s in solicitudes if s.estado_solicitud == 'pendiente'])
+    mentorias_aceptadas = len([s for s in solicitudes if s.estado_solicitud == 'aceptada'])
+    
+    # Pre-cargar diccionarios para nombres
+    materias = {m.id: m.nombre for m in db.query(Materia).all()}
+    
+    # Próximas sesiones (programadas)
+    proximas_sesiones = []
+    for s in sesiones:
+        if s.estado_sesion == 'programada':
+            sol = s.solicitud
+            mentor_nombre = "Mentor no asignado"
+            if sol.mentor_id:
+                mentor_nombre = get_nombre_for_mentor(db, sol.mentor_id)
+                
+            proximas_sesiones.append({
+                "id": s.id,
+                "inicio": s.inicio,
+                "fin": s.fin,
+                "materia": materias.get(sol.materia_id, "Materia Desconocida"),
+                "mentor": mentor_nombre,
+                "descripcion": sol.descripcion,
+                "prioridad": sol.prioridad,
+                "enlace": s.enlace_teams
+            })
+    
+    # Historial reciente
+    historial = [
+        {
+            "id": s.id,
+            "fecha": s.fecha_hora_deseada,
+            "estado": s.estado_solicitud,
+            "materia": materias.get(s.materia_id, "Materia Desconocida")
+        }
+        for s in solicitudes
+    ]
+    historial.sort(key=lambda x: x["fecha"], reverse=True)
+    
+    return {
+        "total_solicitudes": total_solicitudes,
+        "solicitudes_pendientes": solicitudes_pendientes,
+        "mentorias_aceptadas": mentorias_aceptadas,
+        "proximas_sesiones": proximas_sesiones[:5],
+        "historial": historial[:10]
+    }
+
+@router.get("/dashboard/mentor/{mentor_id}")
+def get_dashboard_mentor(mentor_id: int, db: Session = Depends(get_db)):
+    solicitudes = db.query(SolicitudMentoria).filter(SolicitudMentoria.mentor_id == mentor_id).all()
+    sesiones = db.query(SesionMentoria).join(SolicitudMentoria).filter(SolicitudMentoria.mentor_id == mentor_id).all()
+    
+    pendientes_atencion = len([s for s in solicitudes if s.estado_solicitud in ['pendiente', 'asignada']])
+    mentorias_completadas = len([s for s in sesiones if s.estado_sesion == 'completada'])
+    
+    materias = {m.id: m.nombre for m in db.query(Materia).all()}
+    
+    proximas_sesiones = []
+    for s in sesiones:
+        if s.estado_sesion == 'programada':
+            sol = s.solicitud
+            estudiante_nombre = "Estudiante no asignado"
+            if sol.estudiante_id:
+                estudiante_nombre = get_nombre_for_estudiante(db, sol.estudiante_id)
+                
+            proximas_sesiones.append({
+                "id": s.id,
+                "inicio": s.inicio,
+                "fin": s.fin,
+                "materia": materias.get(sol.materia_id, "Materia Desconocida"),
+                "estudiante": estudiante_nombre,
+                "descripcion": sol.descripcion,
+                "prioridad": sol.prioridad,
+                "enlace": s.enlace_teams
+            })
+            
+    # Promedio calificaciones
+    calificaciones = db.query(Calificacion).join(SesionMentoria).join(SolicitudMentoria).filter(SolicitudMentoria.mentor_id == mentor_id, Calificacion.estado == 1).all()
+    promedio = 0
+    if calificaciones:
+        promedio = sum((c.puntaje_total or 0) for c in calificaciones) / len(calificaciones)
+        
+    historial = [
+        {
+            "id": s.id,
+            "fecha": s.fecha_hora_deseada,
+            "estado": s.estado_solicitud,
+            "materia": materias.get(s.materia_id, "Materia Desconocida")
+        }
+        for s in solicitudes
+    ]
+    historial.sort(key=lambda x: x["fecha"], reverse=True)
+    
+    return {
+        "pendientes_atencion": pendientes_atencion,
+        "mentorias_completadas": mentorias_completadas,
+        "promedio_calificaciones": round(promedio, 2),
+        "proximas_sesiones": proximas_sesiones[:5],
+        "historial": historial[:10]
     }
 
 @router.get("/solicitudes-mentoria/", response_model=List[SolicitudMentoriaResponse])

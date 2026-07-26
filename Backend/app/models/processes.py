@@ -23,6 +23,7 @@ class SolicitudMentoria(Base):
     mentor = relationship("Mentor", back_populates="solicitudes")
     sesion = relationship("SesionMentoria", back_populates="solicitud", uselist=False)
     notificaciones = relationship("Notificacion", back_populates="solicitud")
+    materia = relationship("Materia")
 
 class SesionMentoria(Base):
     __tablename__ = "sesiones_mentoria"
