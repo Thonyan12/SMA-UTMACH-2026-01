@@ -168,6 +168,15 @@ const Agenda = () => {
     return { estudiante: estudianteName, materia: materiaName };
   };
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'programada': return 'var(--accent-primary)';
+      case 'completada': return 'var(--success)';
+      case 'cancelada': return 'var(--text-muted)';
+      default: return 'var(--text-primary)';
+    }
+  };
+
   return (
     <div>
       <div style={{ marginBottom: '24px' }}>
@@ -198,10 +207,7 @@ const Agenda = () => {
                     {formatTime(ses.inicio)} - {formatTime(ses.fin)}
                   </div>
                 </div>
-                <span style={{ 
-                  color: 'var(--accent-primary)', backgroundColor: 'var(--bg-secondary)', 
-                  padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' 
-                }}>
+                <span className="status-text" style={{ color: getStatusColor(ses.estado_sesion) }}>
                   {ses.estado_sesion}
                 </span>
               </div>

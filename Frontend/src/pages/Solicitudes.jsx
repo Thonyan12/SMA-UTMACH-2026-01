@@ -103,6 +103,17 @@ const Solicitudes = () => {
     return perf ? `${perf.nombres} ${perf.apellidos}` : 'Perfil Desconocido';
   };
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pendiente': return 'var(--warning)';
+      case 'aceptada': return 'var(--success)';
+      case 'rechazada': return 'var(--danger)';
+      case 'cancelada': return 'var(--text-muted)';
+      case 'completada': return 'var(--accent-primary)';
+      default: return 'var(--text-primary)';
+    }
+  };
+
   const handleViewProfile = (roleId, roleType) => {
     let academicoId = null;
     let semestre = null;
@@ -198,15 +209,7 @@ const Solicitudes = () => {
     return date.toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pendiente': return 'var(--warning)';
-      case 'aceptada': return 'var(--success)';
-      case 'rechazada': return 'var(--danger)';
-      case 'cancelada': return 'var(--text-muted)';
-      default: return 'var(--text-primary)';
-    }
-  };
+
 
   return (
     <div>
@@ -223,15 +226,15 @@ const Solicitudes = () => {
       </div>
 
       <div className="card-panel table-responsive">
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
+        <table className="formal-table">
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-              {user?.roles?.includes('administrador') && <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>ID</th>}
-              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Participantes</th>
-              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Materia</th>
-              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Descripción</th>
-              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estado</th>
-              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Acciones</th>
+            <tr>
+              {user?.roles?.includes('administrador') && <th>ID</th>}
+              <th>Participantes</th>
+              <th>Materia</th>
+              <th>Descripción</th>
+              <th>Estado</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -249,90 +252,84 @@ const Solicitudes = () => {
               </tr>
             ) : (
               solicitudes.map((sol) => (
-                <tr key={sol.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  {user?.roles?.includes('administrador') && <td style={{ padding: '16px 24px', fontWeight: '500' }}>{sol.id}</td>}
-                  
-                  <td style={{ padding: '16px 24px' }}>
-                    <div style={{ marginBottom: '8px' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', fontWeight: 'bold' }}>ESTUDIANTE</span>
-                      <button 
-                        onClick={() => handleViewProfile(sol.estudiante_id, 'estudiante')}
-                        style={{ background: 'none', border: 'none', color: 'var(--primary-color)', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-                        title="Ver Perfil del Estudiante"
-                      >
-                        {getEstudianteName(sol.estudiante_id)}
-                      </button>
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', fontWeight: 'bold' }}>MENTOR</span>
-                      {sol.mentor_id ? (
+                  <tr key={sol.id}>
+                    {user?.roles?.includes('administrador') && (
+                      <td style={{ fontWeight: '500' }}>{sol.id}</td>
+                    )}
+                    
+                    <td>
+                      <div style={{ marginBottom: '4px' }}>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Estudiante:</span><br/>
                         <button 
-                          onClick={() => handleViewProfile(sol.mentor_id, 'mentor')}
+                          onClick={() => handleViewProfile(sol.estudiante_id, 'estudiante')}
                           style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-                          title="Ver Perfil del Mentor"
+                          title="Ver Perfil del Estudiante"
                         >
-                          {getMentorName(sol.mentor_id)}
-                        </button>
-                      ) : (
-                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Por asignar</span>
-                      )}
-                    </div>
-                  </td>
-
-                  <td style={{ padding: '16px 24px' }}>
-                    <div style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{getMateriaName(sol.materia_id)}</div>
-                  </td>
-
-                  <td style={{ padding: '16px 24px', maxWidth: '250px' }}>
-                    <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {sol.descripcion}
-                    </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      Para: {formatDate(sol.fecha_hora_deseada)} (Prioridad: {sol.prioridad})
-                    </div>
-                  </td>
-
-                  <td style={{ padding: '16px 24px' }}>
-                    <span style={{ 
-                      color: getStatusColor(sol.estado_solicitud), 
-                      fontWeight: '500', 
-                      textTransform: 'capitalize',
-                      backgroundColor: 'var(--bg-secondary)',
-                      padding: '4px 10px',
-                      borderRadius: '12px',
-                      fontSize: '0.85rem'
-                    }}>
-                      {sol.estado_solicitud}
-                    </span>
-                  </td>
-
-                  <td style={{ padding: '16px 24px' }}>
-                    {!user?.roles?.includes('estudiante') && sol.estado_solicitud === 'pendiente' ? (
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button 
-                          className="btn-primary"
-                          style={{ padding: '8px 12px', fontSize: '0.85rem' }}
-                          title="Aceptar"
-                          onClick={() => handleUpdateState(sol.id, 'aceptada')}
-                        >
-                          <FaCheck />
-                        </button>
-                        <button 
-                          className="btn-secondary"
-                          style={{ padding: '8px 12px', fontSize: '0.85rem', color: 'var(--danger)', borderColor: 'var(--danger)' }}
-                          title="Rechazar"
-                          onClick={() => handleUpdateState(sol.id, 'rechazada')}
-                        >
-                          <FaTimes />
+                          {getEstudianteName(sol.estudiante_id)}
                         </button>
                       </div>
-                    ) : (
-                      <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                        Sin acciones
+                      <div>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Mentor:</span><br/>
+                        {sol.mentor_id ? (
+                          <button 
+                            onClick={() => handleViewProfile(sol.mentor_id, 'mentor')}
+                            style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                            title="Ver Perfil del Mentor"
+                          >
+                            {getMentorName(sol.mentor_id)}
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Por asignar</span>
+                        )}
+                      </div>
+                    </td>
+
+                    <td>
+                      <div style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{getMateriaName(sol.materia_id)}</div>
+                    </td>
+
+                    <td style={{ maxWidth: '250px' }}>
+                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {sol.descripcion}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        Para: {formatDate(sol.fecha_hora_deseada)} (Prioridad: {sol.prioridad})
+                      </div>
+                    </td>
+
+                    <td>
+                      <span className="status-text" style={{ color: getStatusColor(sol.estado_solicitud) }}>
+                        {sol.estado_solicitud}
                       </span>
-                    )}
-                  </td>
-                </tr>
+                    </td>
+
+                    <td>
+                      {!user?.roles?.includes('estudiante') && sol.estado_solicitud === 'pendiente' ? (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button 
+                            className="btn-primary"
+                            style={{ padding: '8px 12px', fontSize: '0.85rem' }}
+                            title="Aceptar"
+                            onClick={() => handleUpdateState(sol.id, 'aceptada')}
+                          >
+                            <FaCheck />
+                          </button>
+                          <button 
+                            className="btn-secondary"
+                            style={{ padding: '8px 12px', fontSize: '0.85rem', color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                            title="Rechazar"
+                            onClick={() => handleUpdateState(sol.id, 'rechazada')}
+                          >
+                            <FaTimes />
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                          Sin acciones
+                        </span>
+                      )}
+                    </td>
+                  </tr>
               ))
             )}
           </tbody>

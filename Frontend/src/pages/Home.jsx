@@ -275,15 +275,15 @@ const Home = () => {
         {isEstudiante ? 'Mis actividades recientes' : 'Actividad Reciente'}
       </h2>
       <div className="card-panel table-responsive">
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+        <table className="formal-table">
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-              {isAdmin && <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Solicitud ID</th>}
-              {!isEstudiante && <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estudiante</th>}
-              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Tutoría (Materia)</th>
-              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Estado</th>
-              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Fecha Creada</th>
-              <th style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontWeight: '600' }}>Fecha Aceptada</th>
+            <tr>
+              {isAdmin && <th>Solicitud ID</th>}
+              {!isEstudiante && <th>Estudiante</th>}
+              <th>Tutoría (Materia)</th>
+              <th>Estado</th>
+              <th>Fecha Creada</th>
+              <th>Fecha Aceptada</th>
             </tr>
           </thead>
           <tbody>
@@ -303,29 +303,21 @@ const Home = () => {
               actividad.map((act) => {
                 const materia = materias.find(m => m.id === act.materia_id);
                 return (
-                  <tr key={act.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    {isAdmin && <td style={{ padding: '16px 24px', fontWeight: '500' }}>{act.id}</td>}
-                    {!isEstudiante && <td style={{ padding: '16px 24px' }}>{getEstudianteName(act.estudiante_id)}</td>}
-                    <td style={{ padding: '16px 24px', fontWeight: '500', color: 'var(--text-primary)' }}>
+                  <tr key={act.id}>
+                    {isAdmin && <td style={{ fontWeight: '500' }}>{act.id}</td>}
+                    {!isEstudiante && <td>{getEstudianteName(act.estudiante_id)}</td>}
+                    <td style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
                       {materia ? materia.nombre : 'Materia Desconocida'}
                     </td>
-                    <td style={{ padding: '16px 24px' }}>
-                      <span style={{ 
-                        color: getStatusColor(act.estado_solicitud), 
-                        fontWeight: '500', 
-                        textTransform: 'capitalize',
-                        backgroundColor: 'var(--bg-secondary)',
-                        padding: '4px 10px',
-                        borderRadius: '12px',
-                        fontSize: '0.85rem'
-                      }}>
+                    <td>
+                      <span className="status-text" style={{ color: getStatusColor(act.estado_solicitud) }}>
                         {act.estado_solicitud}
                       </span>
                     </td>
-                    <td style={{ padding: '16px 24px', color: 'var(--text-muted)' }}>
+                    <td style={{ color: 'var(--text-muted)' }}>
                       {formatDate(act.fecha_creacion)}
                     </td>
-                    <td style={{ padding: '16px 24px', color: 'var(--text-muted)' }}>
+                    <td style={{ color: 'var(--text-muted)' }}>
                       {act.estado_solicitud === 'aceptada' ? formatDate(act.fecha_actualizacion) : '-'}
                     </td>
                   </tr>
