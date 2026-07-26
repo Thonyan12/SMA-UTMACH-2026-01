@@ -140,12 +140,18 @@ const Solicitudes = () => {
     const car = carreras.find(c => c.id === pa.carrera_id);
     const fac = facultades.find(f => f.id === car?.facultad_id);
 
+    let mentorData = null;
+    if (roleType === 'mentor') {
+      mentorData = mentores.find(m => m.id === roleId);
+    }
+
     setSelectedProfile({
       role: roleType,
       perfil: perf,
       carrera: car,
       facultad: fac,
-      semestre: semestre
+      semestre: semestre,
+      mentor: mentorData
     });
   };
 
@@ -354,7 +360,15 @@ const Solicitudes = () => {
             </button>
             
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
-              <FaUserCircle style={{ fontSize: '4rem', color: 'var(--primary-color)', marginBottom: '12px' }} />
+              {selectedProfile.perfil?.foto_perfil_url ? (
+                <img 
+                  src={selectedProfile.perfil.foto_perfil_url} 
+                  alt="Foto de perfil" 
+                  style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '12px', border: '3px solid var(--primary-color)' }}
+                />
+              ) : (
+                <FaUserCircle style={{ fontSize: '4rem', color: 'var(--primary-color)', marginBottom: '12px' }} />
+              )}
               <h2 style={{ margin: '0 0 4px 0', color: 'var(--text-primary)', textAlign: 'center' }}>
                 {selectedProfile.perfil?.nombres} {selectedProfile.perfil?.apellidos}
               </h2>
@@ -384,6 +398,23 @@ const Solicitudes = () => {
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', display: 'block' }}>SEMESTRE ACTUAL</span>
                   <div style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{selectedProfile.semestre}</div>
                 </div>
+              )}
+
+              {selectedProfile.role === 'mentor' && (
+                <>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', display: 'block' }}>BIOGRAFÍA</span>
+                    <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', marginTop: '4px', lineHeight: '1.4' }}>
+                      {selectedProfile.mentor?.biografia || <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Sin biografía registrada.</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', display: 'block' }}>EXPERIENCIA</span>
+                    <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', marginTop: '4px', lineHeight: '1.4' }}>
+                      {selectedProfile.mentor?.experiencia || <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Sin experiencia registrada.</span>}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
             
