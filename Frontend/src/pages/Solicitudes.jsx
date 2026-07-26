@@ -27,9 +27,10 @@ const Solicitudes = () => {
   const [formData, setFormData] = useState({
     materia_id: '',
     descripcion: '',
-    fecha_hora_deseada: '',
     prioridad: 'media'
   });
+  const [formFecha, setFormFecha] = useState('');
+  const [formHora, setFormHora] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [obscenityError, setObscenityError] = useState('');
   const [datetimeError, setDatetimeError] = useState('');
@@ -177,12 +178,34 @@ const Solicitudes = () => {
     });
   };
 
+  const getMinDateTime = () => {
+    const ahora = new Date();
+    const limit = new Date(ahora.getTime() + 2 * 60 * 60 * 1000);
+    // Pad to match "YYYY-MM-DDTHH:mm" format
+    return limit.toISOString().slice(0, 16);
+  };
+
+  const getHorasDisponibles = () => {
+    const horas = [];
+    for(let i = 7; i <= 21; i++) {
+      const h = i.toString().padStart(2, '0');
+      horas.push(`${h}:00`);
+      horas.push(`${h}:30`);
+    }
+    return horas;
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     if (obscenityError || datetimeError) return;
     
-    // Doble validación al enviar por si acaso
-    if (formData.fecha_hora_deseada < getMinDateTime()) {
+    if (!formFecha || !formHora) {
+      setDatetimeError('Debes seleccionar fecha y hora.');
+      return;
+    }
+    
+    const finalDateTime = `${formFecha}T${formHora}`;
+    if (finalDateTime < getMinDateTime()) {
       setDatetimeError('La fecha y hora debe ser de al menos 2 horas en el futuro.');
       return;
     }
@@ -192,11 +215,13 @@ const Solicitudes = () => {
       const payload = {
         ...formData,
         estudiante_id: user.estudiante_id,
-        fecha_hora_deseada: new Date(formData.fecha_hora_deseada).toISOString()
+        fecha_hora_deseada: new Date(finalDateTime).toISOString()
       };
       await api.post('/processes/solicitudes-mentoria/', payload);
       setShowModal(false);
-      setFormData({ materia_id: '', descripcion: '', fecha_hora_deseada: '', prioridad: 'media' });
+      setFormData({ materia_id: '', descripcion: '', prioridad: 'media' });
+      setFormFecha('');
+      setFormHora('');
       setDatetimeError('');
       toast.success('Solicitud creada con éxito');
       fetchData();
@@ -249,17 +274,6 @@ const Solicitudes = () => {
     }
   };
 
-  const getMinDateTime = () => {
-    const now = new Date();
-    now.setHours(now.getHours() + 2);
-    // Formato: YYYY-MM-DDTHH:mm
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
 
   const formatDate = (isoString) => {
     if (!isoString) return 'N/A';
@@ -565,28 +579,56 @@ const Solicitudes = () => {
               </div>
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Fecha/Hora Deseada</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Fecha Deseada</label>
                   <input 
-                    type="datetime-local" required
-                    min={getMinDateTime()}
-                    value={formData.fecha_hora_deseada}
+                    type="date" required
+                    min={getMinDateTime().split('T')[0]}
+                    value={formFecha}
                     onChange={(e) => {
-                      const selectedVal = e.target.value;
-                      setFormData({...formData, fecha_hora_deseada: selectedVal});
-                      if (selectedVal < getMinDateTime()) {
-                        setDatetimeError('Debe ser al menos 2 horas en el futuro.');
-                      } else {
-                        setDatetimeError('');
+                      setFormFecha(e.target.value);
+                      if (e.target.value && formHora) {
+                        const finalDateTime = `${e.target.value}T${formHora}`;
+                        if (finalDateTime < getMinDateTime()) {
+                          setDatetimeError('Debe ser al menos 2 horas en el futuro.');
+                        } else {
+                          setDatetimeError('');
+                        }
                       }
                     }}
                     style={{ width: '100%', padding: '10px', borderRadius: '6px', border: datetimeError ? '1px solid var(--danger)' : '1px solid var(--border-color)' }}
                   />
-                  {datetimeError && (
-                    <span style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
-                      {datetimeError}
-                    </span>
-                  )}
                 </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Hora Deseada</label>
+                  <select 
+                    required
+                    value={formHora}
+                    onChange={(e) => {
+                      setFormHora(e.target.value);
+                      if (formFecha && e.target.value) {
+                        const finalDateTime = `${formFecha}T${e.target.value}`;
+                        if (finalDateTime < getMinDateTime()) {
+                          setDatetimeError('Debe ser al menos 2 horas en el futuro.');
+                        } else {
+                          setDatetimeError('');
+                        }
+                      }
+                    }}
+                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: datetimeError ? '1px solid var(--danger)' : '1px solid var(--border-color)' }}
+                  >
+                    <option value="" disabled>Seleccione hora...</option>
+                    {getHorasDisponibles().map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+              </div>
+              
+              {datetimeError && (
+                <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: '8px' }}>
+                  {datetimeError}
+                </div>
+              )}
+              
+              <div style={{ display: 'flex', gap: '16px', marginTop: '16px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Prioridad</label>
                   <select 

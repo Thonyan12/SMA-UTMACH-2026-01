@@ -5,6 +5,7 @@ import { FaVideo, FaClock } from 'react-icons/fa';
 
 const CalendarioHibrido = ({ sesiones, formatDate, tipoUsuario }) => {
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
+  const [filtroMomento, setFiltroMomento] = useState('todas');
 
   // Función para normalizar fechas (quitar horas)
   const isSameDay = (date1, date2) => {
@@ -13,8 +14,31 @@ const CalendarioHibrido = ({ sesiones, formatDate, tipoUsuario }) => {
            date1.getFullYear() === date2.getFullYear();
   };
 
-  // Sesiones filtradas por el día seleccionado
-  const sesionesDelDia = (sesiones || []).filter(s => isSameDay(new Date(s.inicio), fechaSeleccionada));
+  // Sesiones filtradas por el día seleccionado y momento del día
+  let sesionesDelDia = (sesiones || []).filter(s => isSameDay(new Date(s.inicio), fechaSeleccionada));
+
+  if (filtroMomento === 'manana') {
+    sesionesDelDia = sesionesDelDia.filter(s => new Date(s.inicio).getHours() < 12);
+  } else if (filtroMomento === 'tarde') {
+    sesionesDelDia = sesionesDelDia.filter(s => new Date(s.inicio).getHours() >= 12);
+  }
+
+  // Ordenar: más próximas primero, finalizadas/pasadas al final
+  const ahora = new Date();
+  sesionesDelDia.sort((a, b) => {
+    const timeA = new Date(a.inicio);
+    const timeB = new Date(b.inicio);
+    
+    // Consideramos "pasada" si la hora de fin ya pasó, o si la hora de inicio pasó hace más de 1 hora
+    const isPastA = new Date(a.fin) < ahora || (ahora - timeA) > 3600000;
+    const isPastB = new Date(b.fin) < ahora || (ahora - timeB) > 3600000;
+
+    if (isPastA && !isPastB) return 1;
+    if (!isPastA && isPastB) return -1;
+    
+    // Si ambas son pasadas o ambas futuras, ordenamos por hora (ascendente)
+    return timeA - timeB;
+  });
 
   // Función para agregar un "puntito" en el calendario si hay sesiones ese día
   const tileContent = ({ date, view }) => {
@@ -85,9 +109,20 @@ const CalendarioHibrido = ({ sesiones, formatDate, tipoUsuario }) => {
 
       {/* Lista de Eventos (Derecha) */}
       <div style={{ flex: '2 1 400px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <h4 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-          Agenda del: <span style={{ fontWeight: 'normal', color: 'var(--text-secondary)' }}>{fechaSeleccionada.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-        </h4>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+          <h4 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)' }}>
+            Agenda del: <span style={{ fontWeight: 'normal', color: 'var(--text-secondary)' }}>{fechaSeleccionada.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          </h4>
+          <select 
+            value={filtroMomento} 
+            onChange={(e) => setFiltroMomento(e.target.value)}
+            style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.85rem' }}
+          >
+            <option value="todas">Todo el día</option>
+            <option value="manana">Mañana (Antes 12:00)</option>
+            <option value="tarde">Tarde (Desde 12:00)</option>
+          </select>
+        </div>
         
         {sesionesDelDia.length > 0 ? (
           sesionesDelDia.map((sesion, idx) => (

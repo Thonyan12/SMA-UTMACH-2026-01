@@ -25,6 +25,9 @@ const Agenda = () => {
   });
   const [submittingRating, setSubmittingRating] = useState(false);
 
+  const [filtroFecha, setFiltroFecha] = useState('');
+  const [filtroHora, setFiltroHora] = useState('todas');
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -52,7 +55,8 @@ const Agenda = () => {
         activas = activas.filter(s => solicitudesData.some(sol => sol.id === s.solicitud_id));
       }
 
-      setSesiones(activas.sort((a, b) => new Date(a.inicio) - new Date(b.inicio)));
+      // Se ordenan en la renderización para permitir filtros dinámicos
+      setSesiones(activas);
       
       setSolicitudes(solicitudesData);
       setEstudiantes(estRes.data);
@@ -177,11 +181,72 @@ const Agenda = () => {
     }
   };
 
+  let sesionesFiltradas = sesiones;
+
+  if (filtroFecha) {
+    sesionesFiltradas = sesionesFiltradas.filter(ses => ses.inicio.startsWith(filtroFecha));
+  }
+
+  if (filtroHora === 'manana') {
+    sesionesFiltradas = sesionesFiltradas.filter(ses => new Date(ses.inicio).getHours() < 12);
+  } else if (filtroHora === 'tarde') {
+    sesionesFiltradas = sesionesFiltradas.filter(ses => new Date(ses.inicio).getHours() >= 12);
+  }
+
+  // Ordenar: programadas primero (ascendente), luego completadas/canceladas (descendente)
+  sesionesFiltradas.sort((a, b) => {
+    const isPastA = a.estado_sesion === 'completada' || a.estado_sesion === 'cancelada';
+    const isPastB = b.estado_sesion === 'completada' || b.estado_sesion === 'cancelada';
+
+    if (isPastA && !isPastB) return 1;
+    if (!isPastA && isPastB) return -1;
+    
+    if (isPastA && isPastB) {
+      return new Date(b.inicio) - new Date(a.inicio); // descendente para pasadas
+    }
+    return new Date(a.inicio) - new Date(b.inicio); // ascendente para futuras
+  });
+
   return (
     <div>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '1.8rem', marginBottom: '4px' }}>Agenda de Mentorías</h1>
-        <p style={{ color: 'var(--text-secondary)' }}>Tus sesiones programadas y accesos a reuniones.</p>
+      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <h1 style={{ fontSize: '1.8rem', marginBottom: '4px' }}>Agenda de Mentorías</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>Tus sesiones programadas y accesos a reuniones.</p>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 'bold' }}>FECHA</label>
+            <input 
+              type="date" 
+              value={filtroFecha}
+              onChange={(e) => setFiltroFecha(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 'bold' }}>HORA</label>
+            <select 
+              value={filtroHora}
+              onChange={(e) => setFiltroHora(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+            >
+              <option value="todas">Todo el día</option>
+              <option value="manana">Mañana (Antes 12:00)</option>
+              <option value="tarde">Tarde (Desde 12:00)</option>
+            </select>
+          </div>
+          {(filtroFecha || filtroHora !== 'todas') && (
+            <button 
+              onClick={() => { setFiltroFecha(''); setFiltroHora('todas'); }}
+              className="btn-secondary"
+              style={{ height: '38px', padding: '0 16px', fontSize: '0.85rem' }}
+            >
+              Borrar filtros
+            </button>
+          )}
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
@@ -191,12 +256,12 @@ const Agenda = () => {
               <div className="spinner"></div>
             </div>
           </div>
-        ) : sesiones.length === 0 ? (
+        ) : sesionesFiltradas.length === 0 ? (
           <div className="card-panel" style={{ gridColumn: '1 / -1', padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No tienes sesiones programadas en tu agenda.
+            No tienes sesiones que coincidan con estos filtros.
           </div>
         ) : (
-          sesiones.map((ses) => (
+          sesionesFiltradas.map((ses) => (
             <div key={ses.id} className="card-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', backgroundColor: 'var(--accent-primary)' }}></div>
               
