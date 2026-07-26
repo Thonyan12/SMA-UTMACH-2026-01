@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { FaHome, FaCalendarAlt, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck, FaUserCircle } from 'react-icons/fa';
+import { FaHome, FaCalendarAlt, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck, FaUserCircle, FaUserTie, FaClock } from 'react-icons/fa';
 import api from '../api/axios';
 import { Toaster } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
@@ -23,11 +23,13 @@ const Layout = () => {
     ];
 
     if (isEstudiante) {
+      items.push({ path: '/dashboard/directorio', label: 'Directorio', icon: <FaUserTie /> });
       items.push({ path: '/dashboard/solicitudes', label: 'Mis Solicitudes', icon: <FaClipboardList /> });
       items.push({ path: '/dashboard/agenda', label: 'Mi Agenda', icon: <FaCalendarAlt /> });
     } else if (isMentor) {
       items.push({ path: '/dashboard/solicitudes', label: 'Solicitudes Entrantes', icon: <FaClipboardList /> });
       items.push({ path: '/dashboard/agenda', label: 'Mi Agenda', icon: <FaCalendarAlt /> });
+      items.push({ path: '/dashboard/disponibilidad', label: 'Mi Disponibilidad', icon: <FaClock /> });
     } else {
       // Default / Admin
       items.push({ path: '/dashboard/solicitudes', label: 'Todas las Solicitudes', icon: <FaClipboardList /> });

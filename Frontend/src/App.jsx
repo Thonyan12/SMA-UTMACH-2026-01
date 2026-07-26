@@ -9,6 +9,8 @@ import Landing from './pages/Landing';
 import Solicitudes from './pages/Solicitudes';
 import Agenda from './pages/Agenda';
 import Profile from './pages/Profile';
+import DirectorioMentores from './pages/DirectorioMentores';
+import DisponibilidadMentor from './pages/DisponibilidadMentor';
 
 function App() {
   return (
@@ -23,9 +25,11 @@ function App() {
           <Route path="/dashboard" element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route index element={<Home />} />
+              <Route path="directorio" element={<DirectorioMentores />} />
               <Route path="solicitudes" element={<Solicitudes />} />
               <Route path="agenda" element={<Agenda />} />
               <Route path="perfil" element={<Profile />} />
+              <Route path="disponibilidad" element={<DisponibilidadMentor />} />
             </Route>
           </Route>
 

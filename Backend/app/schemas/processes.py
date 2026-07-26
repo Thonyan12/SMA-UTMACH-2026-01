@@ -159,3 +159,17 @@ class HistorialCambioResponse(HistorialCambioBase):
     fecha_creacion: datetime
     class Config:
         from_attributes = True
+
+# =======================
+# Directorio
+# =======================
+class DirectorioMentorResponse(BaseModel):
+    id: int
+    nombres: str
+    apellidos: str
+    biografia: Optional[str]
+    experiencia: Optional[str]
+    promedio_calificacion: float
+    total_sesiones: int
+    especialidades: List[Dict[str, Any]]
+

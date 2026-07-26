@@ -665,3 +665,64 @@ def get_historial_cambios(db: Session = Depends(get_db)):
     # Solo permisos de Lectura (GET) para HistorialCambios. 
     # La escritura la manejan los Triggers de BD.
     return db.query(HistorialCambio).all()
+
+# ==========================================
+# Directorio Público de Mentores
+# ==========================================
+from app.schemas.processes import DirectorioMentorResponse
+from app.models.academic import Materia
+
+@router.get("/directorio/mentores", response_model=List[DirectorioMentorResponse])
+def get_directorio_mentores(db: Session = Depends(get_db)):
+    mentores = db.query(Mentor).filter(Mentor.estado_aprobacion == 'aprobado', Mentor.estado == 1).all()
+    
+    # Pre-cargar materias para las especialidades
+    materias_dict = {m.id: m.nombre for m in db.query(Materia).all()}
+    
+    directorio = []
+    for m in mentores:
+        # Extraer nombre y apellidos
+        nombre_completo = "Mentor"
+        apellidos_completos = ""
+        pa = db.query(PerfilAcademico).filter(PerfilAcademico.id == m.academico_id).first()
+        if pa:
+            perf = db.query(Perfil).filter(Perfil.id == pa.perfil_id).first()
+            if perf:
+                nombre_completo = perf.nombres
+                apellidos_completos = perf.apellidos
+        
+        # Calcular promedio y total de sesiones calificadas
+        calificaciones = db.query(Calificacion).join(SesionMentoria).join(SolicitudMentoria).filter(SolicitudMentoria.mentor_id == m.id, Calificacion.estado == 1).all()
+        
+        promedio = 0.0
+        if calificaciones:
+            promedio = sum((c.puntaje_total or 0) for c in calificaciones) / len(calificaciones)
+            
+        # Contar todas las sesiones completadas (tengan calificacion o no)
+        total_sesiones = db.query(func.count(SesionMentoria.id)).join(SolicitudMentoria).filter(
+            SolicitudMentoria.mentor_id == m.id,
+            SesionMentoria.estado_sesion == 'completada'
+        ).scalar()
+        
+        # Especialidades
+        especialidades = []
+        esp_db = db.query(MentorEspecialidad).filter(MentorEspecialidad.mentor_id == m.id, MentorEspecialidad.estado == 1).all()
+        for e in esp_db:
+            especialidades.append({
+                "materia_id": e.materia_id,
+                "materia_nombre": materias_dict.get(e.materia_id, "Desconocida"),
+                "nivel_dominio": e.nivel_dominio
+            })
+            
+        directorio.append({
+            "id": m.id,
+            "nombres": nombre_completo,
+            "apellidos": apellidos_completos,
+            "biografia": m.biografia,
+            "experiencia": m.experiencia,
+            "promedio_calificacion": round(promedio, 2),
+            "total_sesiones": total_sesiones,
+            "especialidades": especialidades
+        })
+        
+    return directorio

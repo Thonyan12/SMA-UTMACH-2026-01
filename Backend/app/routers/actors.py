@@ -188,6 +188,10 @@ def get_mentores_por_materia(materia_id: int, estudiante_id: Optional[int] = Non
 def get_disponibilidad_mentor(db: Session = Depends(get_db)):
     return db.query(DisponibilidadMentor).all()
 
+@router.get("/disponibilidad-mentor/mentor/{mentor_id}", response_model=List[DisponibilidadMentorResponse])
+def get_disponibilidad_by_mentor(mentor_id: int, db: Session = Depends(get_db)):
+    return db.query(DisponibilidadMentor).filter(DisponibilidadMentor.mentor_id == mentor_id).all()
+
 @router.post("/disponibilidad-mentor/", response_model=DisponibilidadMentorResponse)
 def create_disponibilidad_mentor(item: DisponibilidadMentorCreate, db: Session = Depends(get_db)):
     db_item = DisponibilidadMentor(**item.model_dump())
