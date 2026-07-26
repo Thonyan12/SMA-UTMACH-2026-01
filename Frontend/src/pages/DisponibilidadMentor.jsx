@@ -18,6 +18,16 @@ const DisponibilidadMentor = () => {
 
   const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
+  const diasMap = {
+    'Lunes': 1,
+    'Martes': 2,
+    'Miércoles': 3,
+    'Jueves': 4,
+    'Viernes': 5,
+    'Sábado': 6,
+    'Domingo': 7
+  };
+
   useEffect(() => {
     if (user?.mentor_id) {
       fetchDisponibilidad();
@@ -63,9 +73,9 @@ const DisponibilidadMentor = () => {
     try {
       await api.post('/actors/disponibilidad-mentor/', {
         mentor_id: user.mentor_id,
-        dia_semana: form.dia_semana,
-        hora_inicio_minutos: minInicio,
-        hora_fin_minutos: minFin
+        dia_id: diasMap[form.dia_semana],
+        hora_inicio_min: minInicio,
+        hora_fin_min: minFin
       });
       toast.success("Horario añadido correctamente");
       fetchDisponibilidad();
@@ -157,7 +167,8 @@ const DisponibilidadMentor = () => {
           ) : (
             <div style={styles.grid}>
               {diasSemana.map(dia => {
-                const horariosDia = disponibilidades.filter(d => d.dia_semana === dia);
+                const diaId = diasMap[dia];
+                const horariosDia = disponibilidades.filter(d => d.dia_id === diaId);
                 if (horariosDia.length === 0) return null;
                 
                 return (
@@ -166,7 +177,7 @@ const DisponibilidadMentor = () => {
                     <div style={styles.timeSlots}>
                       {horariosDia.map(horario => (
                         <div key={horario.id} style={styles.timeSlot}>
-                          <span>{minutesToTime(horario.hora_inicio_minutos)} - {minutesToTime(horario.hora_fin_minutos)}</span>
+                          <span>{minutesToTime(horario.hora_inicio_min)} - {minutesToTime(horario.hora_fin_min)}</span>
                           <button 
                             onClick={() => handleDelete(horario.id)}
                             style={styles.deleteBtn}

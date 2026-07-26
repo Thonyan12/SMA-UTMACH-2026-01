@@ -273,104 +273,139 @@ def get_solicitudes_mentoria(db: Session = Depends(get_db)):
 @router.post("/solicitudes-mentoria/")
 def create_solicitud_mentoria(item: SolicitudMentoriaCreate, db: Session = Depends(get_db)):
     try:
+        import random
+
+        # --- Extraer día y hora de la fecha solicitada ---
+        fecha_deseada = item.fecha_hora_deseada
+        # Python weekday(): Monday=0...Sunday=6 → cat_dias: Lunes=1...Domingo=7
+        dia_id_solicitado = fecha_deseada.weekday() + 1
+        hora_solicitada_min = fecha_deseada.hour * 60 + fecha_deseada.minute
+
+        dias_nombre = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'}
+
+        # --- Función auxiliar: ¿El mentor tiene disponibilidad en ese día/hora? ---
+        def mentor_disponible(mentor_id: int) -> bool:
+            slot = db.query(DisponibilidadMentor).filter(
+                DisponibilidadMentor.mentor_id == mentor_id,
+                DisponibilidadMentor.dia_id == dia_id_solicitado,
+                DisponibilidadMentor.hora_inicio_min <= hora_solicitada_min,
+                DisponibilidadMentor.hora_fin_min > hora_solicitada_min,
+                DisponibilidadMentor.activo == 1
+            ).first()
+            return slot is not None
+
+        # --- Obtener horarios disponibles para sugerir al estudiante ---
+        def obtener_horarios_disponibles(materia_id: int):
+            mentores_esp = db.query(MentorEspecialidad).join(Mentor).filter(
+                MentorEspecialidad.materia_id == materia_id,
+                Mentor.estado_aprobacion == 'aprobado',
+                Mentor.estado == 1
+            ).all()
+            mentor_ids = [me.mentor_id for me in mentores_esp]
+            if not mentor_ids:
+                return []
+            slots = db.query(DisponibilidadMentor).filter(
+                DisponibilidadMentor.mentor_id.in_(mentor_ids),
+                DisponibilidadMentor.activo == 1
+            ).all()
+            horarios = []
+            for s in slots:
+                h_inicio = f"{s.hora_inicio_min // 60:02d}:{s.hora_inicio_min % 60:02d}"
+                h_fin = f"{s.hora_fin_min // 60:02d}:{s.hora_fin_min % 60:02d}"
+                dia = dias_nombre.get(s.dia_id, f"Día {s.dia_id}")
+                horarios.append(f"{dia} {h_inicio}-{h_fin}")
+            return list(set(horarios))
+
+        # ============================================================
+        # VALIDACIÓN PREVIA: ¿Hay al menos un mentor disponible?
+        # ============================================================
+        mentor_asignado_id = None
+
+        # 1. ¿El estudiante pidió a alguien específico?
+        if item.mentor_id:
+            mentor_valido = db.query(MentorEspecialidad).join(Mentor).filter(
+                MentorEspecialidad.materia_id == item.materia_id,
+                MentorEspecialidad.mentor_id == item.mentor_id,
+                Mentor.estado_aprobacion == 'aprobado',
+                Mentor.estado == 1
+            ).first()
+            if mentor_valido and mentor_disponible(item.mentor_id):
+                mentor_asignado_id = mentor_valido.mentor_id
+
+        # 2. Asignación Inteligente (solo mentores con disponibilidad real)
+        if not mentor_asignado_id:
+            mentores_esp = db.query(MentorEspecialidad).join(Mentor).filter(
+                MentorEspecialidad.materia_id == item.materia_id,
+                Mentor.estado_aprobacion == 'aprobado',
+                Mentor.estado == 1
+            ).all()
+
+            mentores_disponibles = [me for me in mentores_esp if mentor_disponible(me.mentor_id)]
+
+            if mentores_disponibles:
+                mejor_score = -1
+                mejor_mentor_id = None
+
+                for me in mentores_disponibles:
+                    score_compatibilidad = (me.nivel_dominio / 5.0) * 40
+
+                    sol_activas = db.query(func.count(SolicitudMentoria.id)).filter(
+                        SolicitudMentoria.mentor_id == me.mentor_id,
+                        SolicitudMentoria.estado_solicitud.in_(['pendiente', 'asignada', 'programada'])
+                    ).scalar()
+                    carga_factor = max(0, 5 - sol_activas)
+                    score_carga = (carga_factor / 5.0) * 30
+
+                    score_disponibilidad = 20
+                    score_random = random.uniform(0, 10)
+
+                    total_score = score_compatibilidad + score_carga + score_disponibilidad + score_random
+
+                    if total_score > mejor_score:
+                        mejor_score = total_score
+                        mejor_mentor_id = me.mentor_id
+
+                mentor_asignado_id = mejor_mentor_id
+
+        # --- Si NO hay mentor disponible, RECHAZAR sin crear solicitud ---
+        if not mentor_asignado_id:
+            horarios = obtener_horarios_disponibles(item.materia_id)
+            sugerencia = ""
+            if horarios:
+                sugerencia = " Horarios disponibles: " + ", ".join(sorted(horarios)[:8]) + "."
+            raise HTTPException(
+                status_code=400,
+                detail=f"No hay mentores disponibles para esa materia el día {dias_nombre.get(dia_id_solicitado, '')} a las {fecha_deseada.hour:02d}:{fecha_deseada.minute:02d}. Por favor selecciona otro horario.{sugerencia}"
+            )
+
+        # --- SÍ hay mentor → Crear la solicitud y asignar ---
         nueva_solicitud = SolicitudMentoria(
             estudiante_id=item.estudiante_id,
             materia_id=item.materia_id,
             descripcion=item.descripcion,
             fecha_hora_deseada=item.fecha_hora_deseada,
             prioridad=item.prioridad,
-            estado_solicitud="pendiente"
+            estado_solicitud="asignada",
+            mentor_id=mentor_asignado_id
         )
         db.add(nueva_solicitud)
         db.commit()
         db.refresh(nueva_solicitud)
-        
-        # Auto-asignar un mentor disponible para la materia
-        solicitud = db.query(SolicitudMentoria).filter(
-            SolicitudMentoria.estudiante_id == item.estudiante_id,
-            SolicitudMentoria.materia_id == item.materia_id
-        ).order_by(SolicitudMentoria.id.desc()).first()
-        
-        if solicitud:
-            # 1. ¿El estudiante pidió a alguien específico?
-            mentor_asignado_id = None
-            
-            if item.mentor_id:
-                # Verificar que el mentor pedido enseñe la materia y esté activo
-                mentor_valido = db.query(MentorEspecialidad).join(Mentor).filter(
-                    MentorEspecialidad.materia_id == item.materia_id,
-                    MentorEspecialidad.mentor_id == item.mentor_id,
-                    Mentor.estado_aprobacion == 'aprobado',
-                    Mentor.estado == 1
-                ).first()
-                if mentor_valido:
-                    mentor_asignado_id = mentor_valido.mentor_id
-            
-            # 2. Si no pidió o el que pidió no es válido, aplicar Asignación Inteligente
-            if not mentor_asignado_id:
-                mentores_esp = db.query(MentorEspecialidad).join(Mentor).filter(
-                    MentorEspecialidad.materia_id == item.materia_id,
-                    Mentor.estado_aprobacion == 'aprobado',
-                    Mentor.estado == 1
-                ).all()
-                
-                if mentores_esp:
-                    import random
-                    mejor_score = -1
-                    mejor_mentor_id = None
-                    
-                    for me in mentores_esp:
-                        # 40% Compatibilidad (nivel de dominio 1 a 5)
-                        # Transformar a escala 0-40 (ej. nivel 5 = 40 pts, nivel 3 = 24 pts)
-                        score_compatibilidad = (me.nivel_dominio / 5.0) * 40
-                        
-                        # 30% Carga (Menos pendientes = más puntos)
-                        # Contamos cuántas solicitudes 'asignada' o 'programada' o 'pendiente' tiene activas
-                        sol_activas = db.query(func.count(SolicitudMentoria.id)).filter(
-                            SolicitudMentoria.mentor_id == me.mentor_id,
-                            SolicitudMentoria.estado_solicitud.in_(['pendiente', 'asignada', 'programada'])
-                        ).scalar()
-                        
-                        # Si sol_activas > 5, score = 0. Si 0, score = 30. (Escala inversa)
-                        carga_factor = max(0, 5 - sol_activas)
-                        score_carga = (carga_factor / 5.0) * 30
-                        
-                        # 20% Disponibilidad
-                        # Evaluamos si tiene slots registrados. (Fase 7 completará esto con el horario exacto).
-                        # Por ahora, si tiene registros en DisponibilidadMentor, le damos los 20 pts.
-                        disp_count = db.query(func.count(DisponibilidadMentor.id)).filter(
-                            DisponibilidadMentor.mentor_id == me.mentor_id
-                        ).scalar()
-                        score_disponibilidad = 20 if disp_count > 0 else 10 # Si no configuró, asume 10 pts.
-                        
-                        # 10% Aleatoriedad (Suerte)
-                        score_random = random.uniform(0, 10)
-                        
-                        total_score = score_compatibilidad + score_carga + score_disponibilidad + score_random
-                        
-                        if total_score > mejor_score:
-                            mejor_score = total_score
-                            mejor_mentor_id = me.mentor_id
-                            
-                    mentor_asignado_id = mejor_mentor_id
 
-            if mentor_asignado_id:
-                solicitud.mentor_id = mentor_asignado_id
-                solicitud.estado_solicitud = "asignada"
-                db.commit()
-                
-                # Notificar al mentor
-                m_cuenta_id = get_cuenta_id_for_mentor(db, mentor_asignado_id)
-                if m_cuenta_id:
-                    create_system_notification(
-                        db, m_cuenta_id, 
-                        "Nueva Solicitud Asignada", 
-                        "Se te ha asignado inteligentemente una nueva solicitud de mentoría para revisión.", 
-                        solicitud_id=solicitud.id
-                    )
-                    db.commit()
-        
-        return {"message": "Solicitud creada exitosamente a través del sistema de asignación inteligente"}
+        # Notificar al mentor
+        m_cuenta_id = get_cuenta_id_for_mentor(db, mentor_asignado_id)
+        if m_cuenta_id:
+            create_system_notification(
+                db, m_cuenta_id,
+                "Nueva Solicitud Asignada",
+                "Se te ha asignado una nueva solicitud de mentoría para revisión.",
+                solicitud_id=nueva_solicitud.id
+            )
+            db.commit()
+
+        return {"message": "Solicitud creada y asignada exitosamente."}
+    except HTTPException:
+        raise
     except DatabaseError as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=parse_oracle_error(e))

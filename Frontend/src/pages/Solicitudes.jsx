@@ -261,24 +261,27 @@ const Solicitudes = () => {
       const payload = {
         ...formData,
         estudiante_id: user.estudiante_id,
-        fecha_hora_deseada: new Date(finalDateTime).toISOString()
+        fecha_hora_deseada: finalDateTime
       };
       
       if (payload.mentor_id === '') {
         payload.mentor_id = null;
       }
       
-      await api.post('/processes/solicitudes-mentoria/', payload);
+      const response = await api.post('/processes/solicitudes-mentoria/', payload);
       setShowModal(false);
       setFormData({ materia_id: '', descripcion: '', prioridad: 'media' });
       setFormFecha('');
       setFormHora('');
       setDatetimeError('');
-      toast.success('Solicitud creada con éxito');
+      toast.success('Solicitud creada y asignada con éxito');
       fetchData();
     } catch (error) {
       console.error('Error creating solicitud:', error);
-      toast.error('Error al crear la solicitud.');
+      const msg = error.response?.data?.detail || 'Error al crear la solicitud.';
+      // No cerrar el modal, mostrar el error para que cambie la hora
+      setDatetimeError(msg);
+      toast.error(msg, { duration: 6000 });
     } finally {
       setSubmitting(false);
     }
