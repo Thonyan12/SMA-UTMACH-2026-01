@@ -3,6 +3,7 @@ import { FaUserGraduate, FaChalkboardTeacher, FaCalendarCheck } from 'react-icon
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import Skeleton from '../components/Skeleton';
 
 const Home = () => {
   const { user } = useContext(AuthContext);
@@ -162,9 +163,9 @@ const Home = () => {
           </div>
           <div>
             <h3 style={{ fontSize: '1.1rem', margin: '0 0 4px 0', color: 'var(--text-secondary)' }}>Mentores Activos</h3>
-            <p style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>
-              {loading ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '3px' }}></span> : stats.mentores}
-            </p>
+            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>
+              {loading ? <Skeleton type="text" /> : stats.mentores}
+            </div>
           </div>
         </div>
 
@@ -174,9 +175,9 @@ const Home = () => {
           </div>
           <div>
             <h3 style={{ fontSize: '1.1rem', margin: '0 0 4px 0', color: 'var(--text-secondary)' }}>Total de Sesiones</h3>
-            <p style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>
-              {loading ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '3px' }}></span> : stats.sesiones}
-            </p>
+            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>
+              {loading ? <Skeleton type="text" /> : stats.sesiones}
+            </div>
           </div>
         </div>
 
@@ -186,9 +187,9 @@ const Home = () => {
           </div>
           <div>
             <h3 style={{ fontSize: '1.1rem', margin: '0 0 4px 0', color: 'var(--text-secondary)' }}>Solicitudes Pendientes</h3>
-            <p style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>
-              {loading ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '3px' }}></span> : stats.solicitudes}
-            </p>
+            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>
+              {loading ? <Skeleton type="text" /> : stats.solicitudes}
+            </div>
           </div>
         </div>
 
@@ -205,8 +206,11 @@ const Home = () => {
               <h3 style={{ fontSize: '1.1rem', marginBottom: '20px', color: 'var(--text-secondary)' }}>
                 Distribución de Solicitudes por Estado
               </h3>
-              <div style={{ width: '100%', height: 300 }}>
-                <ResponsiveContainer>
+              {loading ? (
+                <Skeleton type="chart" />
+              ) : (
+                <div style={{ width: '100%', height: 300 }}>
+                  <ResponsiveContainer>
                   <PieChart>
                     <Pie
                       data={dashboardStats.solicitudes_por_estado}
@@ -234,6 +238,7 @@ const Home = () => {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
+              )}
             </div>
 
             {/* Gráfico de Barras - Solicitudes por Materia */}
@@ -241,8 +246,11 @@ const Home = () => {
               <h3 style={{ fontSize: '1.1rem', marginBottom: '20px', color: 'var(--text-secondary)' }}>
                 Top Materias Solicitadas
               </h3>
-              <div style={{ width: '100%', height: 300 }}>
-                <ResponsiveContainer>
+              {loading ? (
+                <Skeleton type="chart" />
+              ) : (
+                <div style={{ width: '100%', height: 300 }}>
+                  <ResponsiveContainer>
                   <BarChart data={dashboardStats.solicitudes_por_materia}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
                     <XAxis dataKey="name" stroke="var(--text-secondary)" />
@@ -255,6 +263,7 @@ const Home = () => {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+              )}
             </div>
 
           </div>
