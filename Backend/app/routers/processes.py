@@ -107,12 +107,37 @@ def get_estadisticas(db: Session = Depends(get_db)):
     sol_materia_query = db.query(Materia.nombre, func.count(SolicitudMentoria.id)).join(Materia, Materia.id == SolicitudMentoria.materia_id).group_by(Materia.nombre).all()
     solicitudes_por_materia = [{"name": nombre, "value": count} for nombre, count in sol_materia_query]
     
+    # Ranking de Mentores
+    mentores_activos = db.query(Mentor).filter(Mentor.estado == 1).all()
+    ranking_mentores = []
+    for m in mentores_activos:
+        calificaciones = db.query(Calificacion).join(SesionMentoria).join(SolicitudMentoria).filter(SolicitudMentoria.mentor_id == m.id, Calificacion.estado == 1).all()
+        if calificaciones:
+            promedio = sum((c.puntaje_total or 0) for c in calificaciones) / len(calificaciones)
+            ranking_mentores.append({
+                "id": m.id,
+                "nombre": get_nombre_for_mentor(db, m.id),
+                "promedio": round(promedio, 2),
+                "total_calificaciones": len(calificaciones)
+            })
+        else:
+            ranking_mentores.append({
+                "id": m.id,
+                "nombre": get_nombre_for_mentor(db, m.id),
+                "promedio": 0.0,
+                "total_calificaciones": 0
+            })
+            
+    # Ordenar por promedio descendente y luego por cantidad de calificaciones
+    ranking_mentores.sort(key=lambda x: (x["promedio"], x["total_calificaciones"]), reverse=True)
+    
     return {
         "total_estudiantes": total_estudiantes,
         "total_mentores": total_mentores,
         "total_solicitudes": total_solicitudes,
         "solicitudes_por_estado": solicitudes_por_estado,
-        "solicitudes_por_materia": solicitudes_por_materia
+        "solicitudes_por_materia": solicitudes_por_materia,
+        "ranking_mentores": ranking_mentores[:10]
     }
 
 @router.get("/dashboard/estudiante/{estudiante_id}")
@@ -197,10 +222,29 @@ def get_dashboard_mentor(mentor_id: int, db: Session = Depends(get_db)):
             })
             
     # Promedio calificaciones
-    calificaciones = db.query(Calificacion).join(SesionMentoria).join(SolicitudMentoria).filter(SolicitudMentoria.mentor_id == mentor_id, Calificacion.estado == 1).all()
+    calificaciones = db.query(Calificacion).join(SesionMentoria).join(SolicitudMentoria).filter(SolicitudMentoria.mentor_id == mentor_id, Calificacion.estado == 1).order_by(Calificacion.fecha_creacion.desc()).all()
     promedio = 0
+    calificaciones_detalle = []
+    
     if calificaciones:
         promedio = sum((c.puntaje_total or 0) for c in calificaciones) / len(calificaciones)
+        
+        for c in calificaciones:
+            sesion = db.query(SesionMentoria).filter(SesionMentoria.id == c.sesion_id).first()
+            sol = db.query(SolicitudMentoria).filter(SolicitudMentoria.id == sesion.solicitud_id).first()
+            
+            # Optionally fetch student name, or keep it anonymous
+            # For now we use the subject name
+            calificaciones_detalle.append({
+                "id": c.id,
+                "fecha": c.fecha_creacion,
+                "puntualidad": c.puntualidad,
+                "claridad": c.claridad,
+                "dominio_tema": c.dominio_tema,
+                "puntaje_total": c.puntaje_total,
+                "comentario": c.comentario,
+                "materia": materias.get(sol.materia_id, "Materia Desconocida")
+            })
         
     historial = [
         {
@@ -217,6 +261,7 @@ def get_dashboard_mentor(mentor_id: int, db: Session = Depends(get_db)):
         "pendientes_atencion": pendientes_atencion,
         "mentorias_completadas": mentorias_completadas,
         "promedio_calificaciones": round(promedio, 2),
+        "calificaciones_detalle": calificaciones_detalle,
         "proximas_sesiones": proximas_sesiones[:5],
         "historial": historial[:10]
     }

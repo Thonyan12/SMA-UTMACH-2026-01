@@ -1,6 +1,7 @@
 import React from 'react';
 import { FaChalkboardTeacher, FaCalendarCheck, FaCheckCircle, FaStar, FaVideo, FaClock } from 'react-icons/fa';
 import CalendarioHibrido from './CalendarioHibrido';
+import CalificacionesMentor from './CalificacionesMentor';
 
 const StatCard = ({ icon, label, value, color }) => (
   <div className="card-panel" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', borderLeft: `4px solid ${color}` }}>
@@ -62,6 +63,13 @@ const MentorDashboard = ({ stats, formatDate, navigate }) => {
             </div>
           )}
         </div>
+        
+        {/* Calificaciones y Retroalimentación */}
+        <CalificacionesMentor 
+          calificaciones={stats.calificaciones_detalle} 
+          formatDate={formatDate} 
+        />
+        
       </div>
     </div>
   );

@@ -130,6 +130,7 @@ class EstadisticasResponse(BaseModel):
     total_solicitudes: int
     solicitudes_por_estado: List[Dict[str, Any]]
     solicitudes_por_materia: List[Dict[str, Any]]
+    ranking_mentores: List[Dict[str, Any]] = []
 
 # =======================
 # HistorialCambios

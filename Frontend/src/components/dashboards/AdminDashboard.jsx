@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaUsers, FaUserGraduate, FaFileAlt, FaCheckDouble } from 'react-icons/fa';
+import { FaUsers, FaUserGraduate, FaFileAlt, FaCheckDouble, FaStar } from 'react-icons/fa';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const StatCard = ({ icon, label, value, color }) => (
@@ -86,6 +86,44 @@ const AdminDashboard = ({ stats }) => {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Rendimiento de Mentores */}
+      {stats.ranking_mentores && stats.ranking_mentores.length > 0 && (
+        <div className="card-panel" style={{ padding: '24px', overflowX: 'auto' }}>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '16px' }}>
+            Rendimiento de Mentores (Ranking)
+          </h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                <th style={{ padding: '12px 16px' }}>Mentor</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center' }}>Promedio (Estrellas)</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center' }}>Total Evaluaciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.ranking_mentores.map((mentor, idx) => (
+                <tr key={mentor.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <td style={{ padding: '16px', fontWeight: '500', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                      {idx + 1}
+                    </div>
+                    {mentor.nombre}
+                  </td>
+                  <td style={{ padding: '16px', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', fontWeight: 'bold', fontSize: '1.1rem', color: mentor.promedio >= 4 ? 'var(--success)' : mentor.promedio >= 3 ? 'var(--warning)' : 'var(--danger)' }}>
+                      {mentor.promedio > 0 ? mentor.promedio.toFixed(1) : 'N/A'} <FaStar style={{ color: 'var(--warning)' }} />
+                    </div>
+                  </td>
+                  <td style={{ padding: '16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    {mentor.total_calificaciones}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
