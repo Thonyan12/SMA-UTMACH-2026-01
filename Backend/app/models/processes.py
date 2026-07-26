@@ -14,7 +14,7 @@ class SolicitudMentoria(Base):
     descripcion = Column(String(4000), nullable=False)
     fecha_hora_deseada = Column(TIMESTAMP, nullable=False)
     prioridad = Column(String(20), default="media", nullable=False)
-    estado_solicitud = Column(String(20), ForeignKey("cat_estado_solicitud.codigo"), default="pendiente", nullable=False)
+    estado_solicitud = Column(String(20), default="pendiente", nullable=False)
     motivo_rechazo = Column(String(4000))
     fecha_creacion = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
     fecha_actualizacion = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -32,7 +32,7 @@ class SesionMentoria(Base):
     fin = Column(TIMESTAMP, nullable=False)
     enlace_teams = Column(String(4000))
     observaciones = Column(String(4000))
-    estado_sesion = Column(String(20), ForeignKey("cat_estado_sesion.codigo"), default="programada", nullable=False)
+    estado_sesion = Column(String(20), default="programada", nullable=False)
     fecha_creacion = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
     fecha_actualizacion = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

@@ -102,21 +102,17 @@ def get_solicitudes_mentoria(db: Session = Depends(get_db)):
 @router.post("/solicitudes-mentoria/")
 def create_solicitud_mentoria(item: SolicitudMentoriaCreate, db: Session = Depends(get_db)):
     try:
-        db.execute(
-            text("""
-                CALL pkg_mentorias.sp_crear_solicitud(
-                    :p_estudiante_id, :p_materia_id, :p_descripcion, :p_fecha_hora, :p_prioridad
-                )
-            """),
-            {
-                "p_estudiante_id": item.estudiante_id,
-                "p_materia_id": item.materia_id,
-                "p_descripcion": item.descripcion,
-                "p_fecha_hora": item.fecha_hora_deseada,
-                "p_prioridad": item.prioridad
-            }
+        nueva_solicitud = SolicitudMentoria(
+            estudiante_id=item.estudiante_id,
+            materia_id=item.materia_id,
+            descripcion=item.descripcion,
+            fecha_hora_deseada=item.fecha_hora_deseada,
+            prioridad=item.prioridad,
+            estado_solicitud="pendiente"
         )
+        db.add(nueva_solicitud)
         db.commit()
+        db.refresh(nueva_solicitud)
         
         # Auto-asignar un mentor disponible para la materia
         solicitud = db.query(SolicitudMentoria).filter(
@@ -125,15 +121,18 @@ def create_solicitud_mentoria(item: SolicitudMentoriaCreate, db: Session = Depen
         ).order_by(SolicitudMentoria.id.desc()).first()
         
         if solicitud:
+            import random
             # Buscar un mentor aprobado que dicte esta materia
-            mentor_esp = db.query(MentorEspecialidad).join(Mentor).filter(
+            mentores_esp = db.query(MentorEspecialidad).join(Mentor).filter(
                 MentorEspecialidad.materia_id == item.materia_id,
                 Mentor.estado_aprobacion == 'aprobado',
                 Mentor.estado == 1
-            ).first()
+            ).all()
             
-            if mentor_esp:
+            if mentores_esp:
+                mentor_esp = random.choice(mentores_esp)
                 solicitud.mentor_id = mentor_esp.mentor_id
+                solicitud.estado_solicitud = "asignada"
                 db.commit()
                 
                 # Notificar al mentor que se le ha asignado una nueva solicitud
@@ -158,44 +157,81 @@ def update_solicitud_mentoria(id: int, item: SolicitudMentoriaUpdate, db: Sessio
     if not db_item:
         raise HTTPException(status_code=404, detail="Solicitud no encontrada")
     update_data = item.model_dump(exclude_unset=True)
+    
+    # Sistema de Rebote (Reasignación Automática)
+    was_reassigned = False
+    if update_data.get('estado_solicitud') == 'rechazada':
+        import random
+        other_mentors = db.query(MentorEspecialidad).join(Mentor).filter(
+            MentorEspecialidad.materia_id == db_item.materia_id,
+            MentorEspecialidad.mentor_id != db_item.mentor_id,
+            Mentor.estado_aprobacion == 'aprobado',
+            Mentor.estado == 1
+        ).all()
+        
+        if other_mentors:
+            other_mentor = random.choice(other_mentors)
+            update_data['estado_solicitud'] = 'asignada'
+            update_data['mentor_id'] = other_mentor.mentor_id
+            update_data['motivo_rechazo'] = None
+            was_reassigned = True
+
     for key, value in update_data.items():
         setattr(db_item, key, value)
     db.commit()
     db.refresh(db_item)
     
-    # Crear notificación si el estado cambió a aceptada o rechazada
-    if item.estado_solicitud in ['aceptada', 'rechazada']:
-        c_id = get_cuenta_id_for_estudiante(db, db_item.estudiante_id)
-        if c_id:
-            titulo = f"Solicitud {item.estado_solicitud.capitalize()}"
-            msg = f"Tu solicitud de mentoría ha sido {item.estado_solicitud}."
-            create_system_notification(db, c_id, titulo, msg, solicitud_id=id)
-            db.commit()
-            
-        if item.estado_solicitud == 'aceptada':
-            from datetime import timedelta
-            # Crear la sesión de mentoría automáticamente
-            # Buscar si ya existe para no duplicar
-            sesion_existente = db.query(SesionMentoria).filter(SesionMentoria.solicitud_id == id).first()
-            if not sesion_existente:
-                nueva_sesion = SesionMentoria(
-                    solicitud_id=id,
-                    inicio=db_item.fecha_hora_deseada,
-                    fin=db_item.fecha_hora_deseada + timedelta(hours=1),
-                    enlace_teams="https://teams.microsoft.com/l/meetup-join/..." # Placeholder generico
-                )
-                db.add(nueva_sesion)
+    # Crear notificación si el estado cambió o fue reasignada
+    if was_reassigned:
+        c_id_est = get_cuenta_id_for_estudiante(db, db_item.estudiante_id)
+        if c_id_est:
+            create_system_notification(
+                db, c_id_est, 
+                "Solicitud Reasignada", 
+                "El mentor original no estaba disponible, hemos reasignado tu solicitud a otro mentor disponible.", 
+                solicitud_id=id
+            )
+        
+        c_id_men = get_cuenta_id_for_mentor(db, db_item.mentor_id)
+        if c_id_men:
+            create_system_notification(
+                db, c_id_men, 
+                "Nueva Solicitud Asignada", 
+                "Se te ha reasignado automáticamente una solicitud de mentoría para revisión.", 
+                solicitud_id=id
+            )
+        db.commit()
+    else:
+        if item.estado_solicitud in ['aceptada', 'rechazada'] and not was_reassigned:
+            c_id = get_cuenta_id_for_estudiante(db, db_item.estudiante_id)
+            if c_id:
+                titulo = f"Solicitud {item.estado_solicitud.capitalize()}"
+                msg = f"Tu solicitud de mentoría ha sido {item.estado_solicitud}."
+                create_system_notification(db, c_id, titulo, msg, solicitud_id=id)
                 db.commit()
                 
-                # Crear notificación para la nueva reunión
-                if c_id:
-                    create_system_notification(
-                        db, c_id, 
-                        "Reunión Programada", 
-                        f"Se ha programado tu reunión de mentoría para el {db_item.fecha_hora_deseada.strftime('%d/%m/%Y %H:%M')}.", 
-                        solicitud_id=id
+            if item.estado_solicitud == 'aceptada':
+                from datetime import timedelta
+                # Crear la sesión de mentoría automáticamente
+                sesion_existente = db.query(SesionMentoria).filter(SesionMentoria.solicitud_id == id).first()
+                if not sesion_existente:
+                    nueva_sesion = SesionMentoria(
+                        solicitud_id=id,
+                        inicio=db_item.fecha_hora_deseada,
+                        fin=db_item.fecha_hora_deseada + timedelta(hours=1),
+                        enlace_teams="https://teams.microsoft.com/l/meetup-join/..." # Placeholder generico
                     )
+                    db.add(nueva_sesion)
                     db.commit()
+                    
+                    if c_id:
+                        create_system_notification(
+                            db, c_id, 
+                            "Reunión Programada", 
+                            f"Se ha programado tu reunión de mentoría para el {db_item.fecha_hora_deseada.strftime('%d/%m/%Y %H:%M')}.", 
+                            solicitud_id=id
+                        )
+                        db.commit()
             
     return db_item
 
@@ -295,6 +331,29 @@ def delete_sesion_mentoria(id: int, db: Session = Depends(get_db)):
 @router.get("/calificaciones/", response_model=List[CalificacionResponse])
 def get_calificaciones(db: Session = Depends(get_db)):
     return db.query(Calificacion).all()
+
+@router.get("/calificaciones/mentor/{mentor_id}")
+def get_calificacion_promedio_mentor(mentor_id: int, db: Session = Depends(get_db)):
+    # Calculate average of puntaje_total for all sessions of this mentor
+    from sqlalchemy import func
+    
+    # First, join Calificacion with SesionMentoria and SolicitudMentoria
+    result = db.query(
+        func.avg(Calificacion.puntaje_total).label("promedio"),
+        func.count(Calificacion.id).label("total_sesiones")
+    ).join(
+        SesionMentoria, SesionMentoria.id == Calificacion.sesion_id
+    ).join(
+        SolicitudMentoria, SolicitudMentoria.id == SesionMentoria.solicitud_id
+    ).filter(
+        SolicitudMentoria.mentor_id == mentor_id,
+        Calificacion.estado == 1
+    ).first()
+    
+    return {
+        "promedio": round(result.promedio, 2) if result.promedio else 0.0,
+        "total_sesiones": result.total_sesiones or 0
+    }
 
 @router.post("/calificaciones/", response_model=CalificacionResponse)
 def create_calificacion(item: CalificacionCreate, db: Session = Depends(get_db)):

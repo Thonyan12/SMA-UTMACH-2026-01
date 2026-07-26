@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
-import { FaPlus, FaCheck, FaTimes, FaUserCircle } from 'react-icons/fa';
+import { FaPlus, FaCheck, FaTimes, FaUserCircle, FaStar } from 'react-icons/fa';
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -105,7 +105,9 @@ const Solicitudes = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pendiente': return 'var(--warning)';
+      case 'pendiente':
+      case 'asignada':
+        return 'var(--warning)';
       case 'aceptada': return 'var(--success)';
       case 'rechazada': return 'var(--danger)';
       case 'cancelada': return 'var(--text-muted)';
@@ -114,7 +116,7 @@ const Solicitudes = () => {
     }
   };
 
-  const handleViewProfile = (roleId, roleType) => {
+  const handleViewProfile = async (roleId, roleType) => {
     let academicoId = null;
     let semestre = null;
     
@@ -141,8 +143,15 @@ const Solicitudes = () => {
     const fac = facultades.find(f => f.id === car?.facultad_id);
 
     let mentorData = null;
+    let mentorStats = null;
     if (roleType === 'mentor') {
       mentorData = mentores.find(m => m.id === roleId);
+      try {
+        const res = await api.get(`/processes/calificaciones/mentor/${roleId}`);
+        mentorStats = res.data;
+      } catch (err) {
+        console.error('Error fetching mentor stats:', err);
+      }
     }
 
     setSelectedProfile({
@@ -151,7 +160,8 @@ const Solicitudes = () => {
       carrera: car,
       facultad: fac,
       semestre: semestre,
-      mentor: mentorData
+      mentor: mentorData,
+      stats: mentorStats
     });
   };
 
@@ -310,7 +320,7 @@ const Solicitudes = () => {
                     </td>
 
                     <td>
-                      {!user?.roles?.includes('estudiante') && sol.estado_solicitud === 'pendiente' ? (
+                      {!user?.roles?.includes('estudiante') && (sol.estado_solicitud === 'pendiente' || sol.estado_solicitud === 'asignada') ? (
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button 
                             className="btn-primary"
@@ -351,76 +361,95 @@ const Solicitudes = () => {
           zIndex: 1100,
           backdropFilter: 'blur(3px)'
         }}>
-          <div className="card-panel" style={{ width: '100%', maxWidth: '450px', padding: '32px', position: 'relative' }}>
+          <div className="card-panel" style={{ width: '100%', maxWidth: '380px', padding: 0, position: 'relative', overflow: 'hidden', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', border: 'none' }}>
             <button 
               onClick={() => setSelectedProfile(null)} 
-              style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-muted)' }}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(0,0,0,0.5)', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'white', zIndex: 10, width: '36px', height: '36px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
             >
               <FaTimes />
             </button>
             
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
+            {/* Top Image Section (Tinder Style) */}
+            <div style={{ position: 'relative', width: '100%', height: '400px', backgroundColor: 'var(--bg-secondary)' }}>
               {selectedProfile.perfil?.foto_perfil_url ? (
                 <img 
                   src={selectedProfile.perfil.foto_perfil_url} 
                   alt="Foto de perfil" 
-                  style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '12px', border: '3px solid var(--primary-color)' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               ) : (
-                <FaUserCircle style={{ fontSize: '4rem', color: 'var(--primary-color)', marginBottom: '12px' }} />
+                <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--primary-color) 100%)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <FaUserCircle style={{ fontSize: '8rem', color: 'rgba(255,255,255,0.3)' }} />
+                </div>
               )}
-              <h2 style={{ margin: '0 0 4px 0', color: 'var(--text-primary)', textAlign: 'center' }}>
-                {selectedProfile.perfil?.nombres} {selectedProfile.perfil?.apellidos}
-              </h2>
-              <span style={{ 
-                backgroundColor: selectedProfile.role === 'estudiante' ? 'var(--primary-color)' : 'var(--accent-primary)', 
-                color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' 
-              }}>
-                {selectedProfile.role}
-              </span>
+              
+              {/* Gradient Overlay for Text */}
+              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', padding: '40px 20px 20px 20px', background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%)', color: 'white' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: '800', lineHeight: '1.1' }}>
+                    {selectedProfile.perfil?.nombres.split(' ')[0]} {selectedProfile.perfil?.apellidos.split(' ')[0]}
+                  </h2>
+                  <span style={{ 
+                    backgroundColor: selectedProfile.role === 'estudiante' ? 'var(--primary-color)' : 'var(--warning)', 
+                    color: selectedProfile.role === 'estudiante' ? 'white' : 'black', padding: '4px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase' 
+                  }}>
+                    {selectedProfile.role}
+                  </span>
+                </div>
+                
+                {selectedProfile.role === 'mentor' && selectedProfile.stats && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
+                    <FaStar style={{ color: 'var(--warning)', fontSize: '1rem' }} />
+                    <span style={{ fontSize: '1rem', fontWeight: 'bold' }}>
+                      {selectedProfile.stats.promedio > 0 ? selectedProfile.stats.promedio.toFixed(1) : 'S/C'}
+                    </span>
+                    <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>
+                      ({selectedProfile.stats.total_sesiones} reseñas)
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', backgroundColor: 'var(--bg-secondary)', padding: '20px', borderRadius: '8px' }}>
-              <div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', display: 'block' }}>FACULTAD</span>
-                <div style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{selectedProfile.facultad?.nombre || 'Información no disponible'}</div>
-              </div>
-
-              <div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', display: 'block' }}>CARRERA</span>
-                <div style={{ fontSize: '1rem', color: 'var(--text-primary)', fontWeight: '500' }}>
-                  {selectedProfile.carrera?.nombre || 'Información no disponible'}
-                </div>
-              </div>
-
-              {selectedProfile.role === 'estudiante' && (
-                <div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', display: 'block' }}>SEMESTRE ACTUAL</span>
-                  <div style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{selectedProfile.semestre}</div>
-                </div>
-              )}
-
+            {/* Scrollable Info Section */}
+            <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '40vh', overflowY: 'auto', backgroundColor: 'var(--bg-panel)' }}>
+              
               {selectedProfile.role === 'mentor' && (
                 <>
                   <div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', display: 'block' }}>BIOGRAFÍA</span>
-                    <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', marginTop: '4px', lineHeight: '1.4' }}>
-                      {selectedProfile.mentor?.biografia || <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Sin biografía registrada.</span>}
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '2px solid var(--accent-primary)', paddingBottom: '4px', display: 'inline-block' }}>Sobre mí</h3>
+                    <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                      {selectedProfile.mentor?.biografia || <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>El misterio lo hace interesante. (Sin biografía)</span>}
                     </div>
                   </div>
                   <div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', display: 'block' }}>EXPERIENCIA</span>
-                    <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', marginTop: '4px', lineHeight: '1.4' }}>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '2px solid var(--accent-primary)', paddingBottom: '4px', display: 'inline-block' }}>Experiencia</h3>
+                    <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                       {selectedProfile.mentor?.experiencia || <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Sin experiencia registrada.</span>}
                     </div>
                   </div>
                 </>
               )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', display: 'block', textTransform: 'uppercase' }}>Facultad</span>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>{selectedProfile.facultad?.nombre || 'N/A'}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', display: 'block', textTransform: 'uppercase' }}>Carrera</span>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>
+                    {selectedProfile.carrera?.nombre || 'N/A'}
+                  </div>
+                </div>
+                {selectedProfile.role === 'estudiante' && (
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', display: 'block', textTransform: 'uppercase' }}>Semestre</span>
+                    <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>{selectedProfile.semestre}</div>
+                  </div>
+                )}
+              </div>
             </div>
-            
-            <button className="btn-primary" onClick={() => setSelectedProfile(null)} style={{ width: '100%', marginTop: '24px', padding: '12px' }}>
-              Cerrar
-            </button>
           </div>
         </div>
       )}

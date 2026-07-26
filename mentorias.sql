@@ -558,6 +558,7 @@
     INSERT INTO mentores (academico_id, biografia, experiencia, estado_aprobacion, aprobado_por, fecha_aprobacion) VALUES (8, 'Especialista en administración empresarial y gestión', 'Asesor empresarial con 3 años de experiencia', 'aprobado', 9, SYSTIMESTAMP);
 
     INSERT INTO mentor_especialidades (mentor_id, materia_id, nivel_dominio) VALUES (1, 1, 5);
+    INSERT INTO mentor_especialidades (mentor_id, materia_id, nivel_dominio) VALUES (1, 2, 4);
     INSERT INTO mentor_especialidades (mentor_id, materia_id, nivel_dominio) VALUES (1, 4, 5);
     INSERT INTO mentor_especialidades (mentor_id, materia_id, nivel_dominio) VALUES (1, 5, 4);
     INSERT INTO mentor_especialidades (mentor_id, materia_id, nivel_dominio) VALUES (2, 2, 5);

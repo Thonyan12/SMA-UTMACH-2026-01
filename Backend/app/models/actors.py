@@ -22,7 +22,7 @@ class Mentor(Base):
     academico_id = Column(Integer, ForeignKey("perfiles_academicos.id", ondelete="CASCADE"), unique=True, nullable=False)
     biografia = Column(String(4000))
     experiencia = Column(String(4000))
-    estado_aprobacion = Column(String(20), ForeignKey("cat_estado_aprobacion.codigo"), default="pendiente", nullable=False)
+    estado_aprobacion = Column(String(20), default="pendiente", nullable=False)
     aprobado_por = Column(Integer, ForeignKey("cuentas.id", ondelete="SET NULL"))
     fecha_aprobacion = Column(TIMESTAMP)
     observaciones_admin = Column(String(4000))
