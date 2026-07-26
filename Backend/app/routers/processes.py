@@ -302,6 +302,8 @@ def update_solicitud_mentoria(id: int, item: SolicitudMentoriaUpdate, db: Sessio
             update_data['motivo_rechazo'] = None
             was_reassigned = True
 
+    enlace_teams = update_data.pop('enlace_teams', None)
+
     for key, value in update_data.items():
         setattr(db_item, key, value)
     db.commit()
@@ -345,7 +347,7 @@ def update_solicitud_mentoria(id: int, item: SolicitudMentoriaUpdate, db: Sessio
                         solicitud_id=id,
                         inicio=db_item.fecha_hora_deseada,
                         fin=db_item.fecha_hora_deseada + timedelta(hours=1),
-                        enlace_teams="https://teams.microsoft.com/l/meetup-join/..." # Placeholder generico
+                        enlace_teams=enlace_teams or "https://teams.microsoft.com/l/meetup-join/..."
                     )
                     db.add(nueva_sesion)
                     db.commit()

@@ -25,6 +25,7 @@ class SolicitudMentoriaUpdate(BaseModel):
     prioridad: Optional[str] = None
     estado_solicitud: Optional[str] = None
     motivo_rechazo: Optional[str] = None
+    enlace_teams: Optional[str] = None
 
 class SolicitudMentoriaResponse(SolicitudMentoriaBase):
     id: int

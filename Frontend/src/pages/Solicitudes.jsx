@@ -15,9 +15,13 @@ const Solicitudes = () => {
   const [carreras, setCarreras] = useState([]);
   const [facultades, setFacultades] = useState([]);
   const [carreraMaterias, setCarreraMaterias] = useState([]);
+  const [cuentas, setCuentas] = useState([]);
   
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [selectedSolicitudId, setSelectedSolicitudId] = useState(null);
+  const [enlaceTeams, setEnlaceTeams] = useState('');
   const [selectedProfile, setSelectedProfile] = useState(null); // Para el modal de perfil
 
   const [formData, setFormData] = useState({
@@ -35,7 +39,7 @@ const Solicitudes = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [solRes, matRes, estRes, mentRes, paRes, perfRes, carRes, facRes, cmRes] = await Promise.all([
+      const [solRes, matRes, estRes, mentRes, paRes, perfRes, carRes, facRes, cmRes, cuenRes] = await Promise.all([
         api.get('/processes/solicitudes-mentoria/'),
         api.get('/academic/materias/'),
         api.get('/actors/estudiantes/'),
@@ -44,7 +48,8 @@ const Solicitudes = () => {
         api.get('/users/perfiles/'),
         api.get('/academic/carreras/'),
         api.get('/academic/facultades/'),
-        api.get('/academic/carrera-materias/')
+        api.get('/academic/carrera-materias/'),
+        api.get('/users/cuentas/')
       ]);
       
       let solData = solRes.data.sort((a, b) => b.id - a.id);
@@ -67,6 +72,7 @@ const Solicitudes = () => {
       setCarreras(carRes.data);
       setFacultades(facRes.data);
       setCarreraMaterias(cmRes.data);
+      setCuentas(cuenRes.data);
     } catch (error) {
       console.error('Error fetching data for solicitudes:', error);
     } finally {
@@ -154,6 +160,11 @@ const Solicitudes = () => {
       }
     }
 
+    let cuentaInfo = null;
+    if (perf) {
+      cuentaInfo = cuentas.find(c => c.id === perf.cuenta_id);
+    }
+
     setSelectedProfile({
       role: roleType,
       perfil: perf,
@@ -161,7 +172,8 @@ const Solicitudes = () => {
       facultad: fac,
       semestre: semestre,
       mentor: mentorData,
-      stats: mentorStats
+      stats: mentorStats,
+      cuenta: cuentaInfo
     });
   };
 
@@ -204,6 +216,36 @@ const Solicitudes = () => {
     } catch (error) {
       console.error('Error actualizando solicitud:', error);
       toast.error('Error al actualizar el estado de la solicitud.');
+    }
+  };
+
+  const openAcceptModal = (id) => {
+    console.log("Abriendo modal para aceptar solicitud:", id);
+    setSelectedSolicitudId(id);
+    setEnlaceTeams('');
+    setShowAcceptModal(true);
+  };
+
+  const handleConfirmAccept = async (e) => {
+    e.preventDefault();
+    if (!enlaceTeams.trim()) {
+      toast.error('El enlace de Teams es obligatorio');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.put(`/processes/solicitudes-mentoria/${selectedSolicitudId}`, { 
+        estado_solicitud: 'aceptada',
+        enlace_teams: enlaceTeams.trim()
+      });
+      toast.success('Solicitud aceptada y sesión programada');
+      setShowAcceptModal(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error aceptando solicitud:', error);
+      toast.error('Error al aceptar la solicitud.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -326,7 +368,7 @@ const Solicitudes = () => {
                             className="btn-primary"
                             style={{ padding: '8px 12px', fontSize: '0.85rem' }}
                             title="Aceptar"
-                            onClick={() => handleUpdateState(sol.id, 'aceptada')}
+                            onClick={() => openAcceptModal(sol.id)}
                           >
                             <FaCheck />
                           </button>
@@ -369,42 +411,45 @@ const Solicitudes = () => {
               <FaTimes />
             </button>
             
-            {/* Top Image Section (Tinder Style) */}
-            <div style={{ position: 'relative', width: '100%', height: '400px', backgroundColor: 'var(--bg-secondary)' }}>
-              {selectedProfile.perfil?.foto_perfil_url ? (
-                <img 
-                  src={selectedProfile.perfil.foto_perfil_url} 
-                  alt="Foto de perfil" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              ) : (
-                <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--primary-color) 100%)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  <FaUserCircle style={{ fontSize: '8rem', color: 'rgba(255,255,255,0.3)' }} />
-                </div>
-              )}
+            {/* Professional Header Section */}
+            <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '32px 24px 24px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', borderBottom: '1px solid var(--border-color)' }}>
+              <div style={{ width: '100px', height: '100px', borderRadius: '50%', overflow: 'hidden', border: '4px solid var(--bg-panel)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginBottom: '16px', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                {selectedProfile.perfil?.foto_perfil_url ? (
+                  <img 
+                    src={selectedProfile.perfil.foto_perfil_url} 
+                    alt="Foto de perfil" 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <FaUserCircle style={{ fontSize: '4rem', color: 'rgba(255,255,255,0.7)' }} />
+                )}
+              </div>
               
-              {/* Gradient Overlay for Text */}
-              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', padding: '40px 20px 20px 20px', background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%)', color: 'white' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: '800', lineHeight: '1.1' }}>
-                    {selectedProfile.perfil?.nombres.split(' ')[0]} {selectedProfile.perfil?.apellidos.split(' ')[0]}
-                  </h2>
-                  <span style={{ 
-                    backgroundColor: selectedProfile.role === 'estudiante' ? 'var(--primary-color)' : 'var(--warning)', 
-                    color: selectedProfile.role === 'estudiante' ? 'white' : 'black', padding: '4px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase' 
-                  }}>
-                    {selectedProfile.role}
-                  </span>
-                </div>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', textAlign: 'center' }}>
+                {selectedProfile.perfil?.nombres} {selectedProfile.perfil?.apellidos}
+              </h2>
+              
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '12px', textAlign: 'center' }}>
+                {selectedProfile.cuenta?.correo || 'Correo no disponible'}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ 
+                  backgroundColor: selectedProfile.role === 'estudiante' ? 'var(--accent-primary)' : 'var(--warning)', 
+                  color: selectedProfile.role === 'estudiante' ? 'white' : 'black', 
+                  padding: '4px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase' 
+                }}>
+                  {selectedProfile.role}
+                </span>
                 
                 {selectedProfile.role === 'mentor' && selectedProfile.stats && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
-                    <FaStar style={{ color: 'var(--warning)', fontSize: '1rem' }} />
-                    <span style={{ fontSize: '1rem', fontWeight: 'bold' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'var(--bg-panel)', padding: '4px 10px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                    <FaStar style={{ color: 'var(--warning)', fontSize: '0.85rem' }} />
+                    <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-primary)' }}>
                       {selectedProfile.stats.promedio > 0 ? selectedProfile.stats.promedio.toFixed(1) : 'S/C'}
                     </span>
-                    <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>
-                      ({selectedProfile.stats.total_sesiones} reseñas)
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      ({selectedProfile.stats.total_sesiones})
                     </span>
                   </div>
                 )}
@@ -412,7 +457,7 @@ const Solicitudes = () => {
             </div>
             
             {/* Scrollable Info Section */}
-            <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '40vh', overflowY: 'auto', backgroundColor: 'var(--bg-panel)' }}>
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '50vh', overflowY: 'auto', backgroundColor: 'var(--bg-panel)' }}>
               
               {selectedProfile.role === 'mentor' && (
                 <>
@@ -568,6 +613,40 @@ const Solicitudes = () => {
               </div>
             );
           })()}
+        </div>
+      )}
+
+      {showAcceptModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100, backdropFilter: 'blur(3px)' }}>
+          <div className="modal-content card-panel" style={{ width: '100%', maxWidth: '400px', padding: '24px', position: 'relative' }}>
+            <h2 style={{ marginTop: 0, color: 'var(--text-primary)', marginBottom: '16px' }}>Aprobar Solicitud</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.9rem' }}>
+              Para programar esta mentoría, por favor ingresa el enlace de la reunión virtual donde se llevará a cabo la sesión.
+            </p>
+            
+            <form onSubmit={handleConfirmAccept}>
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label>Enlace de Microsoft Teams (o Zoom) *</label>
+                <input 
+                  type="url" 
+                  value={enlaceTeams}
+                  onChange={(e) => setEnlaceTeams(e.target.value)}
+                  placeholder="https://teams.microsoft.com/..."
+                  required
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn-secondary" onClick={() => setShowAcceptModal(false)} disabled={submitting}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-primary" disabled={submitting}>
+                  {submitting ? 'Aprobando...' : 'Aprobar y Programar'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
