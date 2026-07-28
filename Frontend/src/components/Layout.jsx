@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { FaHome, FaCalendarAlt, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck, FaUserCircle, FaUserTie, FaClock, FaUsers } from 'react-icons/fa';
 import api from '../api/axios';
 import { Toaster } from 'react-hot-toast';
@@ -7,6 +7,7 @@ import { AuthContext } from '../context/AuthContext';
 
 const Layout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [notificaciones, setNotificaciones] = useState([]);
@@ -268,6 +269,17 @@ const Layout = () => {
                         </div>
                       ))
                     )}
+                  </div>
+                  <div style={{ padding: '12px', borderTop: '1px solid var(--border-color)', textAlign: 'center', backgroundColor: '#f8f9fa' }}>
+                    <button 
+                      onClick={() => {
+                        setIsNotifOpen(false);
+                        navigate('/dashboard/notificaciones');
+                      }}
+                      style={{ background: 'none', border: 'none', color: 'var(--primary-color)', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem' }}
+                    >
+                      Ver todas las notificaciones
+                    </button>
                   </div>
                 </div>
               )}

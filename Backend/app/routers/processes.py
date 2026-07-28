@@ -806,7 +806,22 @@ def postular_mentor(
     try:
         db.commit()
         db.refresh(nueva)
+        
+        # Notificar a los administradores
+        est_perf = db.query(Perfil).filter(Perfil.cuenta_id == cuenta_id).first()
+        nombre_est = f"{est_perf.nombres} {est_perf.apellidos}" if est_perf else "Un estudiante"
+        
+        admins = db.query(CuentaRol).filter(CuentaRol.rol_id == 3).all()
+        for admin in admins:
+            create_system_notification(
+                db=db,
+                cuenta_id=admin.cuenta_id,
+                titulo="Nueva postulación a mentor",
+                mensaje=f"{nombre_est} ha enviado una solicitud para ser mentor. Revisa la postulación en el panel de administración."
+            )
+        db.commit()
     except Exception as e:
+        print("ERROR EN POSTULAR MENTOR:", e)
         db.rollback()
         raise HTTPException(status_code=400, detail=parse_oracle_error(e))
     return nueva
@@ -900,6 +915,17 @@ def resolver_postulacion(
 
     postulacion.fecha_resolucion = datetime.utcnow()
     try:
+        db.commit()
+        
+        # Enviar notificación al estudiante
+        titulo_notif = "Postulación Aprobada" if resolucion.accion == 'aprobar' else "Postulación Rechazada"
+        mensaje_notif = "¡Felicidades! Tu postulación para ser mentor ha sido aprobada." if resolucion.accion == 'aprobar' else f"Tu postulación no fue aprobada: {resolucion.motivo_rechazo}"
+        create_system_notification(
+            db=db,
+            cuenta_id=cuenta.id,
+            titulo=titulo_notif,
+            mensaje=mensaje_notif
+        )
         db.commit()
     except Exception as e:
         db.rollback()

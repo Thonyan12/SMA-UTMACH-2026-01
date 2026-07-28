@@ -16,6 +16,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Register from './pages/Register';
 import Postulaciones from './pages/Postulaciones';
+import Notificaciones from './pages/Notificaciones';
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
               <Route path="disponibilidad" element={<DisponibilidadMentor />} />
               <Route path="usuarios" element={<GestionUsuarios />} />
               <Route path="postulaciones" element={<Postulaciones />} />
+              <Route path="notificaciones" element={<Notificaciones />} />
             </Route>
           </Route>
 
