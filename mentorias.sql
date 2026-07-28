@@ -987,19 +987,28 @@
     FOR EACH ROW
     DECLARE
         v_accion VARCHAR2(10);
+        v_cuenta_id NUMBER := NULL;
     BEGIN
         IF INSERTING THEN v_accion := 'crear';
         ELSIF UPDATING THEN v_accion := 'actualizar';
         ELSE v_accion := 'eliminar';
         END IF;
         
-        INSERT INTO historial_cambios (tabla_id, registro_id, accion, descripcion, detalles_json)
+        BEGIN
+            v_cuenta_id := TO_NUMBER(SYS_CONTEXT('USERENV', 'CLIENT_IDENTIFIER'));
+        EXCEPTION WHEN OTHERS THEN
+            v_cuenta_id := NULL;
+        END;
+
+        INSERT INTO historial_cambios (tabla_id, registro_id, accion, descripcion, detalles_json, cuenta_id, ip_origen)
         VALUES (
             (SELECT id FROM tablas_sistema WHERE nombre = 'mentores'),
             NVL(:NEW.id, :OLD.id),
             v_accion,
             'Auditoría automática de mentor',
-            JSON_OBJECT('old_estado' VALUE NVL(:OLD.estado_aprobacion, 'N/A'), 'new_estado' VALUE NVL(:NEW.estado_aprobacion, 'N/A'))
+            JSON_OBJECT('old_estado' VALUE NVL(:OLD.estado_aprobacion, 'N/A'), 'new_estado' VALUE NVL(:NEW.estado_aprobacion, 'N/A')),
+            v_cuenta_id,
+            SYS_CONTEXT('USERENV', 'CLIENT_INFO')
         );
     END;
     /
@@ -1009,19 +1018,28 @@
     FOR EACH ROW
     DECLARE
         v_accion VARCHAR2(10);
+        v_cuenta_id NUMBER := NULL;
     BEGIN
         IF INSERTING THEN v_accion := 'crear';
         ELSIF UPDATING THEN v_accion := 'actualizar';
         ELSE v_accion := 'eliminar';
         END IF;
         
-        INSERT INTO historial_cambios (tabla_id, registro_id, accion, descripcion, detalles_json)
+        BEGIN
+            v_cuenta_id := TO_NUMBER(SYS_CONTEXT('USERENV', 'CLIENT_IDENTIFIER'));
+        EXCEPTION WHEN OTHERS THEN
+            v_cuenta_id := NULL;
+        END;
+
+        INSERT INTO historial_cambios (tabla_id, registro_id, accion, descripcion, detalles_json, cuenta_id, ip_origen)
         VALUES (
             (SELECT id FROM tablas_sistema WHERE nombre = 'solicitudes_mentoria'),
             NVL(:NEW.id, :OLD.id),
             v_accion,
             'Auditoría automática de solicitud',
-            JSON_OBJECT('old_estado' VALUE NVL(:OLD.estado_solicitud, 'N/A'), 'new_estado' VALUE NVL(:NEW.estado_solicitud, 'N/A'))
+            JSON_OBJECT('old_estado' VALUE NVL(:OLD.estado_solicitud, 'N/A'), 'new_estado' VALUE NVL(:NEW.estado_solicitud, 'N/A')),
+            v_cuenta_id,
+            SYS_CONTEXT('USERENV', 'CLIENT_INFO')
         );
     END;
     /
@@ -1031,19 +1049,28 @@
     FOR EACH ROW
     DECLARE
         v_accion VARCHAR2(10);
+        v_cuenta_id NUMBER := NULL;
     BEGIN
         IF INSERTING THEN v_accion := 'crear';
         ELSIF UPDATING THEN v_accion := 'actualizar';
         ELSE v_accion := 'eliminar';
         END IF;
         
-        INSERT INTO historial_cambios (tabla_id, registro_id, accion, descripcion, detalles_json)
+        BEGIN
+            v_cuenta_id := TO_NUMBER(SYS_CONTEXT('USERENV', 'CLIENT_IDENTIFIER'));
+        EXCEPTION WHEN OTHERS THEN
+            v_cuenta_id := NULL;
+        END;
+
+        INSERT INTO historial_cambios (tabla_id, registro_id, accion, descripcion, detalles_json, cuenta_id, ip_origen)
         VALUES (
             (SELECT id FROM tablas_sistema WHERE nombre = 'sesiones_mentoria'),
             NVL(:NEW.id, :OLD.id),
             v_accion,
             'Auditoría automática de sesión',
-            JSON_OBJECT('old_estado' VALUE NVL(:OLD.estado_sesion, 'N/A'), 'new_estado' VALUE NVL(:NEW.estado_sesion, 'N/A'))
+            JSON_OBJECT('old_estado' VALUE NVL(:OLD.estado_sesion, 'N/A'), 'new_estado' VALUE NVL(:NEW.estado_sesion, 'N/A')),
+            v_cuenta_id,
+            SYS_CONTEXT('USERENV', 'CLIENT_INFO')
         );
     END;
     /

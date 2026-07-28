@@ -1,11 +1,12 @@
 import re
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 from sqlalchemy.exc import DatabaseError
 from typing import List, Optional
 
 from app.database import get_db
+from app.core.dependencies import get_current_user
 from app.models.processes import (
     SolicitudMentoria, SesionMentoria, Calificacion, Notificacion, HistorialCambio, PostulacionMentor
 )
@@ -37,6 +38,17 @@ def parse_oracle_error(e: Exception) -> str:
     if match:
         return match.group(1).split('\n')[0].strip()
     return "Ocurrió un error de validación en la base de datos."
+
+def set_audit_context(db: Session, cuenta_id: int, request: Request = None):
+    try:
+        ip = getattr(request.client, "host", "Unknown") if request and request.client else "Unknown"
+        if cuenta_id:
+            db.execute(
+                text("BEGIN DBMS_SESSION.SET_IDENTIFIER(:cid); DBMS_APPLICATION_INFO.SET_CLIENT_INFO(:ip); END;"),
+                {"cid": str(cuenta_id), "ip": str(ip)[:64]}
+            )
+    except Exception as e:
+        print(f"Error setting audit context: {e}")
 
 def get_cuenta_id_for_estudiante(db: Session, estudiante_id: int):
     est = db.query(Estudiante).filter(Estudiante.id == estudiante_id).first()
@@ -286,7 +298,9 @@ def get_solicitudes_mentoria(db: Session = Depends(get_db)):
     return db.query(SolicitudMentoria).all()
 
 @router.post("/solicitudes-mentoria/")
-def create_solicitud_mentoria(item: SolicitudMentoriaCreate, db: Session = Depends(get_db)):
+def create_solicitud_mentoria(item: SolicitudMentoriaCreate, request: Request, db: Session = Depends(get_db)):
+    c_id = get_cuenta_id_for_estudiante(db, item.estudiante_id)
+    set_audit_context(db, c_id, request)
     try:
         import random
 
@@ -426,7 +440,8 @@ def create_solicitud_mentoria(item: SolicitudMentoriaCreate, db: Session = Depen
         raise HTTPException(status_code=400, detail=parse_oracle_error(e))
 
 @router.put("/solicitudes-mentoria/{id}", response_model=SolicitudMentoriaResponse)
-def update_solicitud_mentoria(id: int, item: SolicitudMentoriaUpdate, db: Session = Depends(get_db)):
+def update_solicitud_mentoria(id: int, item: SolicitudMentoriaUpdate, request: Request, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+    set_audit_context(db, current_user.id, request)
     db_item = db.query(SolicitudMentoria).filter(SolicitudMentoria.id == id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Solicitud no encontrada")
@@ -530,7 +545,8 @@ def get_sesiones_mentoria(db: Session = Depends(get_db)):
     return db.query(SesionMentoria).all()
 
 @router.post("/sesiones-mentoria/")
-def create_sesion_mentoria(item: SesionMentoriaCreate, db: Session = Depends(get_db)):
+def create_sesion_mentoria(item: SesionMentoriaCreate, request: Request, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+    set_audit_context(db, current_user.id, request)
     try:
         db.execute(
             text("""
@@ -561,7 +577,8 @@ def create_sesion_mentoria(item: SesionMentoriaCreate, db: Session = Depends(get
         raise HTTPException(status_code=400, detail=parse_oracle_error(e))
 
 @router.put("/sesiones-mentoria/{id}", response_model=SesionMentoriaResponse)
-def update_sesion_mentoria(id: int, item: SesionMentoriaUpdate, db: Session = Depends(get_db)):
+def update_sesion_mentoria(id: int, item: SesionMentoriaUpdate, request: Request, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+    set_audit_context(db, current_user.id, request)
     db_item = db.query(SesionMentoria).filter(SesionMentoria.id == id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
@@ -859,8 +876,11 @@ class ResolucionPostulacion(BaseModel):
 def resolver_postulacion(
     id: int,
     resolucion: ResolucionPostulacion,
-    db: Session = Depends(get_db)
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
+    set_audit_context(db, current_user.id, request)
     postulacion = db.query(PostulacionMentor).filter(PostulacionMentor.id == id).first()
     if not postulacion:
         raise HTTPException(status_code=404, detail="Postulación no encontrada")
