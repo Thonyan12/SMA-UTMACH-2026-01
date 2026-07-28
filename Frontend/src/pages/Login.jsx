@@ -22,6 +22,21 @@ const Login = () => {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!correo.endsWith('@utmachala.edu.ec')) {
+      const msg = 'El correo debe ser institucional (@utmachala.edu.ec)';
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    if (password.length < 6) {
+      const msg = 'La contraseña debe tener al menos 6 caracteres';
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -60,6 +75,21 @@ const Login = () => {
       const errorMsg = err.response?.data?.detail || 'Código incorrecto o expirado';
       setError(errorMsg);
       toast.error(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const result = await login(correo, password);
+      if (result && result.requires_2fa) {
+        toast.success('Nuevo código enviado a tu correo');
+      }
+    } catch (err) {
+      toast.error('Error al reenviar el código. Intenta nuevamente.');
     } finally {
       setIsLoading(false);
     }
@@ -226,21 +256,14 @@ const Login = () => {
               </p>
             </div>
 
-            <button 
-              type="submit" 
-              className="btn-primary" 
-              disabled={isLoading}
-              style={{ marginTop: '8px', width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}
-            >
-              {isLoading ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '2px', borderColor: 'white', borderTopColor: 'transparent' }}></span> : 'Verificar y Entrar'}
+            <button type="submit" className="btn-primary" disabled={isLoading} style={{ marginTop: '8px', width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}>
+              {isLoading ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '2px', borderColor: 'white', borderTopColor: 'transparent' }}></span> : 'Verificar Dispositivo'}
             </button>
-            <button 
-              type="button" 
-              onClick={() => { setStep(1); setCodigo2fa(''); setError(''); }}
-              className="btn-secondary" 
-              style={{ width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}
-            >
-              Volver
+            <button type="button" onClick={handleResendCode} disabled={isLoading} className="btn-secondary" style={{ width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}>
+              {isLoading ? 'Reenviando...' : 'Volver a enviar código'}
+            </button>
+            <button type="button" onClick={() => { setStep(1); setCodigo2fa(''); setError(''); }} className="btn-secondary" style={{ width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}>
+              Volver atrás
             </button>
           </form>
         )}

@@ -43,6 +43,18 @@ const ResetPassword = () => {
     }
   };
 
+  const handleResendCode = async () => {
+    setIsLoading(true);
+    try {
+      await api.post('/auth/forgot-password', { correo });
+      toast.success('Nuevo código enviado a tu correo');
+    } catch (err) {
+      toast.error('Error al reenviar el código');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div style={{ 
       display: 'flex', 
@@ -149,6 +161,9 @@ const ResetPassword = () => {
             {isLoading ? 'Guardando...' : 'Restablecer Contraseña'}
           </button>
           
+          <button type="button" onClick={handleResendCode} disabled={isLoading} className="btn-secondary" style={{ width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+              {isLoading ? 'Reenviando...' : 'Volver a enviar código'}
+          </button>
           <div style={{ textAlign: 'center', marginTop: '16px' }}>
             <Link to="/login" style={{ color: 'var(--accent-primary)', textDecoration: 'none', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
               <FaArrowLeft /> Volver al Inicio de Sesión

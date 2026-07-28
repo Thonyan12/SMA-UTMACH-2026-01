@@ -51,6 +51,13 @@ const Register = () => {
     e.preventDefault();
     setError('');
     
+    if (!formData.correo.endsWith('@utmachala.edu.ec')) {
+      const msg = 'El correo debe ser institucional (@utmachala.edu.ec)';
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Las contraseñas no coinciden');
       return;
@@ -103,6 +110,29 @@ const Register = () => {
       const errorMsg = err.response?.data?.detail || 'Código incorrecto o expirado';
       setError(errorMsg);
       toast.error(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const payload = {
+        nombres: formData.nombres,
+        apellidos: formData.apellidos,
+        cedula: formData.cedula,
+        correo: formData.correo,
+        password: formData.password,
+        carrera_id: parseInt(formData.carrera_id),
+        semestre: parseInt(formData.semestre)
+      };
+      
+      const res = await api.post('/auth/register', payload);
+      toast.success('Nuevo código enviado a tu correo');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Error al reenviar código');
     } finally {
       setIsLoading(false);
     }
@@ -289,6 +319,9 @@ const Register = () => {
 
             <button type="submit" className="btn-primary" disabled={isLoading} style={{ marginTop: '8px', width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}>
               {isLoading ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '2px', borderColor: 'white', borderTopColor: 'transparent' }}></span> : 'Verificar y Crear Cuenta'}
+            </button>
+            <button type="button" onClick={handleResendCode} disabled={isLoading} className="btn-secondary" style={{ width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}>
+              {isLoading ? 'Reenviando...' : 'Volver a enviar código'}
             </button>
             <button type="button" onClick={() => { setStep(1); setCodigo(''); setError(''); }} className="btn-secondary" style={{ width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}>
               Volver atrás

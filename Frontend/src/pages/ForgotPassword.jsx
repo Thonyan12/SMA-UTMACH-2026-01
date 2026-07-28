@@ -16,6 +16,11 @@ const ForgotPassword = () => {
       return;
     }
     
+    if (!correo.endsWith('@utmachala.edu.ec')) {
+      toast.error('El correo debe ser institucional (@utmachala.edu.ec)');
+      return;
+    }
+    
     setIsLoading(true);
     try {
       await api.post('/auth/forgot-password', { correo });
