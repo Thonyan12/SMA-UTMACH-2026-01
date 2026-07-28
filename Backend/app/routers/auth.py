@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models.users import Cuenta, CuentaRol, Rol, Perfil
 from app.models.actors import Estudiante, Mentor
-from app.models.academic import PerfilAcademico
-from app.schemas.auth import Token, UserRegister, AuthMeResponse, ForgotPasswordRequest, ResetPasswordRequest, Verify2FARequest
+from app.models.academic import PerfilAcademico, Carrera
+from app.schemas.auth import Token, UserRegister, AuthMeResponse, ForgotPasswordRequest, ResetPasswordRequest, Verify2FARequest, VerifyRegisterRequest
 from app.schemas.users import CuentaResponse
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.core.dependencies import get_current_user
@@ -161,22 +161,155 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
     
     return {"message": "Contraseña actualizada correctamente"}
 
-@router.post("/register", response_model=CuentaResponse)
+@router.get("/carreras")
+def get_carreras(db: Session = Depends(get_db)):
+    carreras = db.query(Carrera).filter(Carrera.estado == 1).all()
+    return [{"id": c.id, "nombre": c.nombre} for c in carreras]
+
+@router.post("/register")
 def register_user(user_in: UserRegister, db: Session = Depends(get_db)):
     existing_user = db.query(Cuenta).filter(Cuenta.correo == user_in.correo).first()
+    
+    # Check if exists and active
     if existing_user:
-        raise HTTPException(status_code=400, detail="El correo ya esta registrado")
+        if existing_user.estado == 1:
+            raise HTTPException(status_code=400, detail="El correo ya esta registrado y activo.")
+        else:
+            # Overwrite pending user data
+            user = existing_user
+            user.password_hash = get_password_hash(user_in.password)
+            db.commit()
+    else:
+        # Create new pending user
+        hashed_password = get_password_hash(user_in.password)
+        user = Cuenta(
+            correo=user_in.correo,
+            password_hash=hashed_password,
+            estado=0
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
         
-    hashed_password = get_password_hash(user_in.password)
-    new_user = Cuenta(
-        correo=user_in.correo,
-        password_hash=hashed_password,
-        estado=1
-    )
-    db.add(new_user)
+    # Check perfil
+    perfil = db.query(Perfil).filter(Perfil.cuenta_id == user.id).first()
+    if not perfil:
+        perfil = Perfil(
+            cuenta_id=user.id,
+            codigo_institucional=user_in.cedula,
+            nombres=user_in.nombres,
+            apellidos=user_in.apellidos,
+            estado=0
+        )
+        db.add(perfil)
+        db.commit()
+        db.refresh(perfil)
+    else:
+        perfil.codigo_institucional = user_in.cedula
+        perfil.nombres = user_in.nombres
+        perfil.apellidos = user_in.apellidos
+        perfil.estado = 0
+        db.commit()
+        
+    # Check roles (Estudiante = 1)
+    rol = db.query(CuentaRol).filter(CuentaRol.cuenta_id == user.id, CuentaRol.rol_id == 1).first()
+    if not rol:
+        db.add(CuentaRol(cuenta_id=user.id, rol_id=1))
+        db.commit()
+
+    # Check PerfilAcademico
+    pa = db.query(PerfilAcademico).filter(PerfilAcademico.perfil_id == perfil.id).first()
+    if not pa:
+        pa = PerfilAcademico(perfil_id=perfil.id, carrera_id=user_in.carrera_id)
+        db.add(pa)
+        db.commit()
+        db.refresh(pa)
+    else:
+        pa.carrera_id = user_in.carrera_id
+        db.commit()
+
+    # Check Estudiante
+    est = db.query(Estudiante).filter(Estudiante.academico_id == pa.id).first()
+    if not est:
+        est = Estudiante(academico_id=pa.id, semestre=user_in.semestre, estado=0)
+        db.add(est)
+        db.commit()
+    else:
+        est.semestre = user_in.semestre
+        est.estado = 0
+        db.commit()
+        
+    # Limpiar códigos anteriores de register
+    db.query(CodigoVerificacion).filter(
+        CodigoVerificacion.cuenta_id == user.id,
+        CodigoVerificacion.tipo == 'register'
+    ).delete()
     db.commit()
-    db.refresh(new_user)
-    return new_user
+
+    # Generar código 2FA
+    codigo = ''.join(random.choices(string.digits, k=6))
+    expiracion = datetime.utcnow() + timedelta(minutes=15)
+    
+    nuevo_codigo = CodigoVerificacion(
+        cuenta_id=user.id,
+        codigo=codigo,
+        tipo='register',
+        fecha_expiracion=expiracion
+    )
+    db.add(nuevo_codigo)
+    db.commit()
+
+    html = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #0056b3;">Sistema de Mentorías SMA</h2>
+            <p>Hola {user_in.nombres},</p>
+            <p>Estás a un paso de crear tu cuenta. Utiliza el siguiente código temporal de 6 dígitos para verificar tu correo institucional:</p>
+            <div style="margin: 20px 0; padding: 15px; background-color: #f4f4f4; border-radius: 8px; text-align: center;">
+                <h1 style="margin: 0; font-size: 32px; letter-spacing: 5px;">{codigo}</h1>
+            </div>
+            <p>Este código expirará en 15 minutos.</p>
+            <p>Si no fuiste tú, por favor ignora este mensaje.</p>
+            <br/>
+            <p>Atentamente,<br/>Equipo de Soporte SMA</p>
+        </body>
+    </html>
+    """
+    send_email(user.correo, "Verificación de Cuenta - SMA", html)
+
+    return {"message": "Código de verificación enviado", "requires_verification": True, "cuenta_id": user.id}
+
+@router.post("/verify-register")
+def verify_register(req: VerifyRegisterRequest, db: Session = Depends(get_db)):
+    user = db.query(Cuenta).filter(Cuenta.correo == req.correo).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    cod = db.query(CodigoVerificacion).filter(
+        CodigoVerificacion.cuenta_id == user.id,
+        CodigoVerificacion.codigo == req.codigo,
+        CodigoVerificacion.tipo == 'register',
+        CodigoVerificacion.fecha_expiracion > datetime.utcnow()
+    ).first()
+    
+    if not cod:
+        raise HTTPException(status_code=400, detail="Código inválido o expirado")
+        
+    # Activar la cuenta
+    user.estado = 1
+    perfil = db.query(Perfil).filter(Perfil.cuenta_id == user.id).first()
+    if perfil:
+        perfil.estado = 1
+        pa = db.query(PerfilAcademico).filter(PerfilAcademico.perfil_id == perfil.id).first()
+        if pa:
+            est = db.query(Estudiante).filter(Estudiante.academico_id == pa.id).first()
+            if est:
+                est.estado = 1
+    
+    db.delete(cod)
+    db.commit()
+    
+    return {"message": "Cuenta verificada y activada exitosamente"}
 
 @router.get("/me", response_model=AuthMeResponse)
 def read_users_me(current_user: Cuenta = Depends(get_current_user), db: Session = Depends(get_db)):

@@ -20,6 +20,19 @@ const Landing = () => {
         <div>
           <Link to="/login" style={{
             padding: '10px 24px',
+            color: '#ffffff',
+            textDecoration: 'none',
+            fontWeight: '600',
+            transition: 'opacity 0.2s',
+            marginRight: '16px'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+          onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            Iniciar Sesión
+          </Link>
+          <Link to="/register" style={{
+            padding: '10px 24px',
             backgroundColor: '#ffffff',
             color: 'var(--primary-color)',
             textDecoration: 'none',
@@ -31,7 +44,7 @@ const Landing = () => {
           onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
           onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
           >
-            Iniciar Sesión
+            Regístrate
           </Link>
         </div>
       </nav>
@@ -102,6 +115,37 @@ const Landing = () => {
           }}
           >
             Acceder al Sistema <FaChevronRight style={{ fontSize: '1rem' }} />
+          </Link>
+          <Link to="/register" style={{
+            padding: '18px 40px',
+            backgroundColor: '#ffffff',
+            color: 'var(--accent-primary)',
+            border: '2px solid var(--accent-primary)',
+            textDecoration: 'none',
+            borderRadius: '12px',
+            fontWeight: 'bold',
+            fontSize: '1.2rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-3px)';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(8, 76, 132, 0.2)';
+            e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
+            e.currentTarget.style.color = '#ffffff';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+            e.currentTarget.style.backgroundColor = '#ffffff';
+            e.currentTarget.style.color = 'var(--accent-primary)';
+          }}
+          >
+            Crear Cuenta
           </Link>
         </div>
 

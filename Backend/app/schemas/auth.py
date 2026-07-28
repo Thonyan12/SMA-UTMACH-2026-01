@@ -13,9 +13,17 @@ class TokenData(BaseModel):
     correo: Optional[str] = None
 
 class UserRegister(BaseModel):
+    nombres: str
+    apellidos: str
+    cedula: str
     correo: EmailStr
     password: str
+    carrera_id: int
+    semestre: int
 
+class VerifyRegisterRequest(BaseModel):
+    correo: EmailStr
+    codigo: str
 class UserLogin(BaseModel):
     correo: EmailStr
     password: str
