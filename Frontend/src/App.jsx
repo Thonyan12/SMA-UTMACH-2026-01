@@ -11,6 +11,7 @@ import Agenda from './pages/Agenda';
 import Profile from './pages/Profile';
 import DirectorioMentores from './pages/DirectorioMentores';
 import DisponibilidadMentor from './pages/DisponibilidadMentor';
+import GestionUsuarios from './pages/GestionUsuarios';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
               <Route path="agenda" element={<Agenda />} />
               <Route path="perfil" element={<Profile />} />
               <Route path="disponibilidad" element={<DisponibilidadMentor />} />
+              <Route path="usuarios" element={<GestionUsuarios />} />
             </Route>
           </Route>
 

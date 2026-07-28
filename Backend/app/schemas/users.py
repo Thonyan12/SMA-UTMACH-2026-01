@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, field_validator
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 # =======================
@@ -109,3 +109,37 @@ class PerfilResponse(PerfilBase):
 
     class Config:
         from_attributes = True
+
+# =======================
+# Admin Gestión Usuarios
+# =======================
+class UserAdminCreate(BaseModel):
+    correo: EmailStr
+    password: str
+    codigo_institucional: str
+    nombres: str
+    apellidos: str
+    roles: List[str] # ["estudiante", "mentor", "administrador"]
+    carrera_id: Optional[int] = None
+    semestre: Optional[int] = None
+
+class UserAdminUpdate(BaseModel):
+    nombres: Optional[str] = None
+    apellidos: Optional[str] = None
+    roles: Optional[List[str]] = None
+    estado: Optional[int] = None
+    carrera_id: Optional[int] = None
+    semestre: Optional[int] = None
+
+class UserAdminResponse(BaseModel):
+    id: int
+    correo: str
+    estado: int
+    nombres: str
+    apellidos: str
+    codigo_institucional: str
+    roles: List[str]
+    estudiante_id: Optional[int] = None
+    mentor_id: Optional[int] = None
+    carrera_id: Optional[int] = None
+    semestre: Optional[int] = None

@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { FaHome, FaCalendarAlt, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck, FaUserCircle, FaUserTie, FaClock } from 'react-icons/fa';
+import { FaHome, FaCalendarAlt, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck, FaUserCircle, FaUserTie, FaClock, FaUsers } from 'react-icons/fa';
 import api from '../api/axios';
 import { Toaster } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
@@ -34,6 +34,9 @@ const Layout = () => {
       // Default / Admin
       items.push({ path: '/dashboard/solicitudes', label: 'Todas las Solicitudes', icon: <FaClipboardList /> });
       items.push({ path: '/dashboard/agenda', label: 'Agenda Global', icon: <FaCalendarAlt /> });
+      if (isAdmin) {
+        items.push({ path: '/dashboard/usuarios', label: 'Gestión Usuarios', icon: <FaUsers /> });
+      }
     }
     
     // Add profile to all
