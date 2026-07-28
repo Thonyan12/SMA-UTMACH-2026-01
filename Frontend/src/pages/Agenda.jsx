@@ -25,6 +25,10 @@ const Agenda = () => {
   });
   const [submittingRating, setSubmittingRating] = useState(false);
 
+  const [showBitacoraModal, setShowBitacoraModal] = useState(false);
+  const [bitacoraData, setBitacoraData] = useState({ asistencia: 'asistio', observaciones: '' });
+  const [submittingBitacora, setSubmittingBitacora] = useState(false);
+
   const [filtroFecha, setFiltroFecha] = useState('');
   const [filtroHora, setFiltroHora] = useState('todas');
 
@@ -87,15 +91,30 @@ const Agenda = () => {
     }
   };
 
-  const handleComplete = async (id) => {
-    if (!window.confirm('¿Marcar esta sesión como completada?')) return;
+  const openBitacoraModal = (id) => {
+    setSelectedSession(sesiones.find(s => s.id === id));
+    setBitacoraData({ asistencia: 'asistio', observaciones: '' });
+    setShowBitacoraModal(true);
+  };
+
+  const handleSubmitBitacora = async (e) => {
+    e.preventDefault();
+    if (!selectedSession) return;
+    setSubmittingBitacora(true);
     try {
-      await api.put(`/processes/sesiones-mentoria/${id}`, { estado_sesion: 'completada' });
-      toast.success('Sesión marcada como completada');
+      const estadoFinal = bitacoraData.asistencia === 'asistio' ? 'completada' : 'no_asistio';
+      await api.put(`/processes/sesiones-mentoria/${selectedSession.id}`, { 
+        estado_sesion: estadoFinal,
+        observaciones: bitacoraData.observaciones
+      });
+      toast.success(`Sesión finalizada como ${estadoFinal}`);
+      setShowBitacoraModal(false);
       fetchData();
     } catch (error) {
       console.error('Error completando sesión:', error);
       toast.error('Error al actualizar el estado de la sesión.');
+    } finally {
+      setSubmittingBitacora(false);
     }
   };
 
@@ -299,8 +318,8 @@ const Agenda = () => {
                       <button 
                         className="btn-primary" 
                         style={{ backgroundColor: 'var(--success)', borderColor: 'var(--success)', color: 'white', padding: '10px' }}
-                        title="Marcar como Completada"
-                        onClick={() => handleComplete(ses.id)}
+                        title="Finalizar Sesión (Bitácora)"
+                        onClick={() => openBitacoraModal(ses.id)}
                       >
                         <FaCheck />
                       </button>
@@ -397,6 +416,57 @@ const Agenda = () => {
                 </button>
                 <button type="submit" className="btn-primary" disabled={submittingRating}>
                   {submittingRating ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '2px', borderColor: 'white', borderTopColor: 'transparent' }}></span> : 'Enviar Calificación'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Bitácora */}
+      {showBitacoraModal && selectedSession && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div className="card-panel" style={{ width: '100%', maxWidth: '450px', padding: '32px' }}>
+            <h2 style={{ marginBottom: '8px' }}>Finalizar Sesión (Bitácora)</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px' }}>
+              Estudiante: {getSolicitudDetails(selectedSession.solicitud_id).estudiante}
+            </p>
+
+            <form onSubmit={handleSubmitBitacora} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Asistencia del Estudiante</label>
+                <select 
+                  value={bitacoraData.asistencia}
+                  onChange={(e) => setBitacoraData({...bitacoraData, asistencia: e.target.value})}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)' }}
+                >
+                  <option value="asistio">Sí asistió</option>
+                  <option value="no_asistio">No asistió</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Observaciones (Opcional)</label>
+                <textarea 
+                  rows={4}
+                  value={bitacoraData.observaciones}
+                  onChange={(e) => setBitacoraData({...bitacoraData, observaciones: e.target.value})}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', resize: 'none' }}
+                  placeholder="Temas tratados, progreso del estudiante..."
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+                <button type="button" className="btn-secondary" onClick={() => setShowBitacoraModal(false)} disabled={submittingBitacora}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-primary" disabled={submittingBitacora}>
+                  {submittingBitacora ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '2px', borderColor: 'white', borderTopColor: 'transparent' }}></span> : 'Finalizar Sesión'}
                 </button>
               </div>
             </form>

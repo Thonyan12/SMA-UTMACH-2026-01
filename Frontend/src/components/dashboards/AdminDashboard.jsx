@@ -1,6 +1,8 @@
 import React from 'react';
 import { FaUsers, FaUserGraduate, FaFileAlt, FaCheckDouble, FaStar } from 'react-icons/fa';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const StatCard = ({ icon, label, value, color }) => (
   <div className="card-panel" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', borderLeft: `4px solid ${color}` }}>
@@ -19,8 +21,63 @@ const COLORS = ['#084C84', '#B92C34', '#f59e0b', '#10b981', '#6366f1', '#ec4899'
 const AdminDashboard = ({ stats }) => {
   if (!stats) return <div style={{ padding: '40px', textAlign: 'center' }}>Cargando estadísticas del administrador...</div>;
 
+  const exportCSV = () => {
+    if (!stats?.ranking_mentores) return;
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Ranking,Mentor,Promedio,Total Evaluaciones\n";
+    
+    stats.ranking_mentores.forEach((mentor, idx) => {
+      const prom = mentor.promedio > 0 ? mentor.promedio.toFixed(1) : "N/A";
+      csvContent += `${idx + 1},"${mentor.nombre}",${prom},${mentor.total_calificaciones}\n`;
+    });
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "reporte_mentores_utmach.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportPDF = () => {
+    if (!stats?.ranking_mentores) return;
+    
+    const doc = new jsPDF();
+    doc.text("Reporte de Rendimiento de Mentores - UTMACH", 14, 20);
+    
+    const tableColumn = ["Ranking", "Mentor", "Promedio", "Evaluaciones"];
+    const tableRows = [];
+    
+    stats.ranking_mentores.forEach((mentor, idx) => {
+      const prom = mentor.promedio > 0 ? mentor.promedio.toFixed(1) : "N/A";
+      tableRows.push([idx + 1, mentor.nombre, prom, mentor.total_calificaciones]);
+    });
+    
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 30,
+    });
+    
+    doc.save("reporte_mentores_utmach.pdf");
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 style={{ fontSize: '1.2rem', margin: 0 }}>Panel de Administración</h2>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn-secondary" onClick={exportCSV} style={{ fontSize: '0.85rem', padding: '6px 12px' }}>
+            Descargar CSV
+          </button>
+          <button className="btn-primary" onClick={exportPDF} style={{ fontSize: '0.85rem', padding: '6px 12px' }}>
+            Descargar PDF
+          </button>
+        </div>
+      </div>
+
       {/* Stats Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
         <StatCard icon={<FaUserGraduate />} label="Total Estudiantes" value={stats.total_estudiantes} color="var(--accent-primary)" />
