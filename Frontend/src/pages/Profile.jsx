@@ -1,9 +1,46 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { FaUserGraduate, FaChalkboardTeacher, FaUserShield, FaEnvelope, FaCalendarAlt, FaIdBadge } from 'react-icons/fa';
+import api from '../api/axios';
+import { FaUserGraduate, FaChalkboardTeacher, FaUserShield, FaEnvelope, FaCalendarAlt, FaIdBadge, FaCheckCircle, FaTimesCircle, FaClock } from 'react-icons/fa';
+import toast from 'react-hot-toast';
 
 const Profile = () => {
   const { user } = useContext(AuthContext);
+  const [postulacion, setPostulacion] = useState(null);
+  const [motivo, setMotivo] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (user && user.roles.includes('estudiante') && !user.roles.includes('mentor')) {
+      const fetchPostulacion = async () => {
+        try {
+          const res = await api.get(`/processes/postulaciones/me?cuenta_id=${user.id}`);
+          if (res.data) setPostulacion(res.data);
+        } catch (error) {
+          console.error("Error al cargar postulación:", error);
+        }
+      };
+      fetchPostulacion();
+    }
+  }, [user]);
+
+  const handlePostular = async (e) => {
+    e.preventDefault();
+    if (!motivo.trim()) {
+      toast.error('Debe ingresar un motivo');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await api.post(`/processes/postular-mentor?cuenta_id=${user.id}`, { motivo });
+      setPostulacion(res.data);
+      toast.success('Postulación enviada correctamente');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al postularse');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (!user) {
     return <div className="loading-spinner"><div className="spinner"></div></div>;
@@ -141,6 +178,50 @@ const Profile = () => {
             </div>
           </div>
         </div>
+        
+        {/* Tarjeta de Postulación a Mentor (Solo si es estudiante y NO es mentor) */}
+        {user.roles.includes('estudiante') && !user.roles.includes('mentor') && (
+          <div className="card" style={styles.detailsCard}>
+            <h3 style={styles.sectionTitle}>Quiero ser Mentor</h3>
+            
+            {postulacion ? (
+              <div style={{ padding: '16px', borderRadius: '8px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+                <p style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', color: postulacion.estado === 'pendiente' ? 'var(--warning)' : postulacion.estado === 'aprobada' ? 'var(--success)' : 'var(--danger)' }}>
+                  {postulacion.estado === 'pendiente' && <><FaClock /> Postulación en Revisión</>}
+                  {postulacion.estado === 'aprobada' && <><FaCheckCircle /> Postulación Aprobada</>}
+                  {postulacion.estado === 'rechazada' && <><FaTimesCircle /> Postulación Rechazada</>}
+                </p>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                  <strong>Motivo enviado:</strong> {postulacion.motivo}
+                </p>
+                {postulacion.estado === 'rechazada' && postulacion.motivo_rechazo && (
+                  <p style={{ fontSize: '0.9rem', color: 'var(--danger)', marginTop: '8px', padding: '8px', backgroundColor: 'rgba(204, 30, 60, 0.1)', borderRadius: '4px' }}>
+                    <strong>Razón de rechazo:</strong> {postulacion.motivo_rechazo}
+                  </p>
+                )}
+                {postulacion.estado === 'rechazada' && (
+                  <button onClick={() => setPostulacion(null)} className="btn-secondary" style={{ marginTop: '12px' }}>Volver a postular</button>
+                )}
+              </div>
+            ) : (
+              <form onSubmit={handlePostular} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                  ¿Tienes vocación para enseñar? Únete a nuestro equipo de mentores y ayuda a tus compañeros. Escribe brevemente por qué te gustaría ser mentor.
+                </p>
+                <textarea 
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  placeholder="Ej: Tengo facilidad para explicar matemáticas y me gusta ayudar..."
+                  style={{ width: '100%', padding: '12px', minHeight: '100px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', resize: 'vertical' }}
+                  required
+                />
+                <button type="submit" className="btn-primary" disabled={isSubmitting} style={{ alignSelf: 'flex-start' }}>
+                  {isSubmitting ? 'Enviando...' : 'Enviar Postulación'}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

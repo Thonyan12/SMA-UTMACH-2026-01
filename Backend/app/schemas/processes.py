@@ -3,6 +3,31 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 # =======================
+# Postulaciones Mentor
+# =======================
+class PostulacionMentorBase(BaseModel):
+    motivo: str
+
+class PostulacionMentorCreate(PostulacionMentorBase):
+    pass
+
+class PostulacionMentorResponse(PostulacionMentorBase):
+    id: int
+    estudiante_id: int
+    estado: str
+    fecha_solicitud: datetime
+    fecha_resolucion: Optional[datetime] = None
+    motivo_rechazo: Optional[str] = None
+    
+    # Virtual fields for admin display
+    estudiante_nombre: Optional[str] = None
+    carrera_nombre: Optional[str] = None
+    semestre: Optional[int] = None
+    
+    class Config:
+        from_attributes = True
+
+# =======================
 # SolicitudesMentoria
 # =======================
 class SolicitudMentoriaBase(BaseModel):

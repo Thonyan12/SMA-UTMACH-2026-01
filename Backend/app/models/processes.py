@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, Boolean, Float, Text, FetchedValue
+from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, Boolean, Float, Text, FetchedValue, Identity
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -23,7 +23,18 @@ class SolicitudMentoria(Base):
     mentor = relationship("Mentor", back_populates="solicitudes")
     sesion = relationship("SesionMentoria", back_populates="solicitud", uselist=False)
     notificaciones = relationship("Notificacion", back_populates="solicitud")
-    materia = relationship("Materia")
+
+class PostulacionMentor(Base):
+    __tablename__ = "postulaciones_mentor"
+    id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
+    estudiante_id = Column(Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False)
+    motivo = Column(String(4000), nullable=False)
+    estado = Column(String(20), default="pendiente", nullable=False)
+    fecha_solicitud = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+    fecha_resolucion = Column(TIMESTAMP)
+    motivo_rechazo = Column(String(4000))
+
+    estudiante = relationship("Estudiante")
 
 class SesionMentoria(Base):
     __tablename__ = "sesiones_mentoria"

@@ -3,22 +3,26 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 from sqlalchemy.exc import DatabaseError
-from typing import List
+from typing import List, Optional
 
 from app.database import get_db
 from app.models.processes import (
-    SolicitudMentoria, SesionMentoria, Calificacion, Notificacion, HistorialCambio
+    SolicitudMentoria, SesionMentoria, Calificacion, Notificacion, HistorialCambio, PostulacionMentor
 )
 from app.models.actors import Estudiante, Mentor, MentorEspecialidad, DisponibilidadMentor
-from app.models.academic import PerfilAcademico
-from app.models.users import Perfil
+from app.models.academic import PerfilAcademico, Carrera
+from app.models.users import Perfil, Cuenta, CuentaRol, Rol
 from app.schemas.processes import (
     SolicitudMentoriaCreate, SolicitudMentoriaUpdate, SolicitudMentoriaResponse,
     SesionMentoriaCreate, SesionMentoriaUpdate, SesionMentoriaResponse,
     CalificacionCreate, CalificacionUpdate, CalificacionResponse,
     NotificacionCreate, NotificacionUpdate, NotificacionResponse,
-    HistorialCambioCreate, HistorialCambioUpdate, HistorialCambioResponse
+    HistorialCambioCreate, HistorialCambioUpdate, HistorialCambioResponse,
+    PostulacionMentorCreate, PostulacionMentorResponse
 )
+from app.services.email_service import send_email
+from datetime import datetime
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -41,6 +45,16 @@ def get_cuenta_id_for_estudiante(db: Session, estudiante_id: int):
             perf = db.query(Perfil).filter(Perfil.id == pa.perfil_id).first()
             if perf:
                 return perf.cuenta_id
+    return None
+
+def get_estudiante_id_from_cuenta(db: Session, cuenta_id: int):
+    perf = db.query(Perfil).filter(Perfil.cuenta_id == cuenta_id).first()
+    if perf:
+        pa = db.query(PerfilAcademico).filter(PerfilAcademico.perfil_id == perf.id).first()
+        if pa:
+            est = db.query(Estudiante).filter(Estudiante.academico_id == pa.id).first()
+            if est:
+                return est.id
     return None
 
 def get_cuenta_id_for_mentor(db: Session, mentor_id: int):
@@ -761,3 +775,134 @@ def get_directorio_mentores(db: Session = Depends(get_db)):
         })
         
     return directorio
+
+# ==========================================
+# Postulaciones de Mentores
+# ==========================================
+
+@router.post("/postular-mentor", response_model=PostulacionMentorResponse)
+def postular_mentor(
+    postulacion: PostulacionMentorCreate,
+    cuenta_id: int, 
+    db: Session = Depends(get_db)
+):
+    estudiante_id = get_estudiante_id_from_cuenta(db, cuenta_id)
+    if not estudiante_id:
+        raise HTTPException(status_code=404, detail="No eres estudiante en el sistema.")
+
+    # Check if already applied and pending/approved
+    existente = db.query(PostulacionMentor).filter(
+        PostulacionMentor.estudiante_id == estudiante_id,
+        PostulacionMentor.estado.in_(['pendiente', 'aprobada'])
+    ).first()
+    if existente:
+        raise HTTPException(status_code=400, detail="Ya tienes una postulación pendiente o aprobada.")
+
+    nueva = PostulacionMentor(
+        estudiante_id=estudiante_id,
+        motivo=postulacion.motivo
+    )
+    db.add(nueva)
+    try:
+        db.commit()
+        db.refresh(nueva)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=parse_oracle_error(e))
+    return nueva
+
+@router.get("/postulaciones/me", response_model=Optional[PostulacionMentorResponse])
+def mis_postulaciones(cuenta_id: int, db: Session = Depends(get_db)):
+    estudiante_id = get_estudiante_id_from_cuenta(db, cuenta_id)
+    if not estudiante_id:
+        return None
+    return db.query(PostulacionMentor).filter(PostulacionMentor.estudiante_id == estudiante_id).order_by(PostulacionMentor.fecha_solicitud.desc()).first()
+
+@router.get("/postulaciones", response_model=List[PostulacionMentorResponse])
+def listar_postulaciones(db: Session = Depends(get_db)):
+    postulaciones = db.query(PostulacionMentor).filter(PostulacionMentor.estado == 'pendiente').order_by(PostulacionMentor.fecha_solicitud.desc()).all()
+    for p in postulaciones:
+        est = db.query(Estudiante).filter(Estudiante.id == p.estudiante_id).first()
+        if est:
+            p.semestre = est.semestre
+            pa = db.query(PerfilAcademico).filter(PerfilAcademico.id == est.academico_id).first()
+            if pa:
+                carrera = db.query(Carrera).filter(Carrera.id == pa.carrera_id).first()
+                if carrera:
+                    p.carrera_nombre = carrera.nombre
+                perf = db.query(Perfil).filter(Perfil.id == pa.perfil_id).first()
+                if perf:
+                    p.estudiante_nombre = f"{perf.nombres} {perf.apellidos}"
+    return postulaciones
+
+class ResolucionPostulacion(BaseModel):
+    accion: str
+    motivo_rechazo: Optional[str] = None
+
+@router.put("/postulaciones/{id}/resolver")
+def resolver_postulacion(
+    id: int,
+    resolucion: ResolucionPostulacion,
+    db: Session = Depends(get_db)
+):
+    postulacion = db.query(PostulacionMentor).filter(PostulacionMentor.id == id).first()
+    if not postulacion:
+        raise HTTPException(status_code=404, detail="Postulación no encontrada")
+    if postulacion.estado != 'pendiente':
+        raise HTTPException(status_code=400, detail="La postulación ya fue resuelta")
+
+    est = db.query(Estudiante).filter(Estudiante.id == postulacion.estudiante_id).first()
+    if not est:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
+        
+    pa = db.query(PerfilAcademico).filter(PerfilAcademico.id == est.academico_id).first()
+    perf = db.query(Perfil).filter(Perfil.id == pa.perfil_id).first()
+    cuenta = db.query(Cuenta).filter(Cuenta.id == perf.cuenta_id).first()
+
+    if resolucion.accion == 'aprobar':
+        postulacion.estado = 'aprobada'
+        mentor_existente = db.query(Mentor).filter(Mentor.academico_id == pa.id).first()
+        if not mentor_existente:
+            nuevo_mentor = Mentor(
+                academico_id=pa.id,
+                biografia="Nuevo mentor en el sistema."
+            )
+            db.add(nuevo_mentor)
+        
+        cuenta_rol_existente = db.query(CuentaRol).filter(CuentaRol.cuenta_id == cuenta.id, CuentaRol.rol_id == 2).first()
+        if not cuenta_rol_existente:
+            nuevo_cr = CuentaRol(cuenta_id=cuenta.id, rol_id=2)
+            db.add(nuevo_cr)
+            
+        try:
+            send_email(
+                subject="¡Felicidades! Eres un nuevo Mentor",
+                email_to=cuenta.correo,
+                body=f"Hola {perf.nombres},<br><br>Tu postulación para ser Mentor ha sido <b>aprobada</b>. Cierra sesión y vuelve a ingresar para ver tus nuevas herramientas de mentor.<br><br>Atentamente,<br>Equipo SMA-UTMACH"
+            )
+        except Exception:
+            pass 
+
+    elif resolucion.accion == 'rechazar':
+        if not resolucion.motivo_rechazo:
+            raise HTTPException(status_code=400, detail="Debe proveer un motivo de rechazo")
+        postulacion.estado = 'rechazada'
+        postulacion.motivo_rechazo = resolucion.motivo_rechazo
+        
+        try:
+            send_email(
+                subject="Actualización de tu postulación a Mentor",
+                email_to=cuenta.correo,
+                body=f"Hola {perf.nombres},<br><br>Lamentamos informarte que tu postulación para ser Mentor no ha sido aprobada en esta ocasión.<br><br><b>Motivo:</b> {resolucion.motivo_rechazo}<br><br>Te invitamos a prepararte y volver a postular en el futuro.<br><br>Atentamente,<br>Equipo SMA-UTMACH"
+            )
+        except Exception:
+            pass
+
+    postulacion.fecha_resolucion = datetime.utcnow()
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Error al guardar la resolución")
+
+    return {"message": f"Postulación {resolucion.accion}da exitosamente"}

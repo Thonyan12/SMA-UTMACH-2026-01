@@ -15,6 +15,7 @@ import GestionUsuarios from './pages/GestionUsuarios';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Register from './pages/Register';
+import Postulaciones from './pages/Postulaciones';
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
               <Route path="perfil" element={<Profile />} />
               <Route path="disponibilidad" element={<DisponibilidadMentor />} />
               <Route path="usuarios" element={<GestionUsuarios />} />
+              <Route path="postulaciones" element={<Postulaciones />} />
             </Route>
           </Route>
 
