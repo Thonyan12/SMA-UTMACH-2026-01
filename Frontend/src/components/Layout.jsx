@@ -250,7 +250,7 @@ const Layout = () => {
                             </div>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>{notif.mensaje.replace(/\s*#\d+\s*/g, ' ')}</p>
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px', display: 'block' }}>
-                              {new Date(notif.fecha_creacion).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              {notif.fecha_creacion ? new Date(notif.fecha_creacion.endsWith('Z') ? notif.fecha_creacion : notif.fecha_creacion + 'Z').toLocaleString('es-ES', { timeZone: 'America/Guayaquil', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
                             </span>
                           </div>
                           {notif.leido === 0 && (
