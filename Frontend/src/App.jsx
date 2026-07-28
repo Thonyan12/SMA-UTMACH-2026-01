@@ -17,6 +17,7 @@ import ResetPassword from './pages/ResetPassword';
 import Register from './pages/Register';
 import Postulaciones from './pages/Postulaciones';
 import Notificaciones from './pages/Notificaciones';
+import Auditoria from './pages/Auditoria';
 
 function App() {
   return (
@@ -42,6 +43,7 @@ function App() {
               <Route path="usuarios" element={<GestionUsuarios />} />
               <Route path="postulaciones" element={<Postulaciones />} />
               <Route path="notificaciones" element={<Notificaciones />} />
+              <Route path="auditoria" element={<Auditoria />} />
             </Route>
           </Route>
 

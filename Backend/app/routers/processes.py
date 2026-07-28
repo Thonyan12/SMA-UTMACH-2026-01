@@ -11,6 +11,7 @@ from app.models.processes import (
 )
 from app.models.actors import Estudiante, Mentor, MentorEspecialidad, DisponibilidadMentor
 from app.models.academic import PerfilAcademico, Carrera
+from app.models.catalogs import TablasSistema
 from app.models.users import Perfil, Cuenta, CuentaRol, Rol
 from app.schemas.processes import (
     SolicitudMentoriaCreate, SolicitudMentoriaUpdate, SolicitudMentoriaResponse,
@@ -930,5 +931,65 @@ def resolver_postulacion(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail="Error al guardar la resolución")
+
+@router.get("/auditoria")
+def obtener_auditoria(
+    skip: int = 0, 
+    limit: int = 20, 
+    fecha_inicio: Optional[str] = None, 
+    fecha_fin: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(
+        HistorialCambio, TablasSistema.nombre.label("tabla_nombre")
+    ).outerjoin(
+        TablasSistema, HistorialCambio.tabla_id == TablasSistema.id
+    )
+
+    if fecha_inicio:
+        query = query.filter(HistorialCambio.fecha_creacion >= datetime.fromisoformat(fecha_inicio))
+    if fecha_fin:
+        # Añadir 23:59:59 si solo es fecha (manejo simple, asume YYYY-MM-DD o formato ISO)
+        query = query.filter(HistorialCambio.fecha_creacion <= datetime.fromisoformat(fecha_fin))
+
+    total = query.count()
+    resultados = query.order_by(HistorialCambio.fecha_creacion.desc()).offset(skip).limit(limit).all()
+
+    auditoria_list = []
+    # Cache perfiles para evitar consultas repetitivas N+1
+    perfiles_cache = {}
+
+    for hist, tabla_nombre in resultados:
+        usuario_nombre = "Sistema"
+        if hist.cuenta_id:
+            if hist.cuenta_id in perfiles_cache:
+                usuario_nombre = perfiles_cache[hist.cuenta_id]
+            else:
+                perf = db.query(Perfil).filter(Perfil.cuenta_id == hist.cuenta_id).first()
+                if perf:
+                    usuario_nombre = f"{perf.nombres} {perf.apellidos}"
+                else:
+                    usuario_nombre = f"Cuenta ID: {hist.cuenta_id}"
+                perfiles_cache[hist.cuenta_id] = usuario_nombre
+        
+        auditoria_list.append({
+            "id": hist.id,
+            "fecha": hist.fecha_creacion,
+            "usuario": usuario_nombre,
+            "ip": hist.ip_origen,
+            "tabla": tabla_nombre or f"Tabla ID: {hist.tabla_id}",
+            "accion": hist.accion,
+            "descripcion": hist.descripcion,
+            "datos_anteriores": hist.datos_anteriores,
+            "datos_nuevos": hist.datos_nuevos
+        })
+    
+    return {
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "data": auditoria_list
+    }
+
 
     return {"message": f"Postulación {resolucion.accion}da exitosamente"}

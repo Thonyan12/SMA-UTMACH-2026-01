@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUsers, FaUserGraduate, FaFileAlt, FaCheckDouble, FaStar, FaIdCardAlt } from 'react-icons/fa';
+import { FaUsers, FaUserGraduate, FaFileAlt, FaCheckDouble, FaStar, FaIdCardAlt, FaShieldAlt } from 'react-icons/fa';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -72,9 +72,6 @@ const AdminDashboard = ({ stats }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ fontSize: '1.2rem', margin: 0 }}>Panel de Administración</h2>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button className="btn-secondary" onClick={() => navigate('/dashboard/postulaciones')} style={{ fontSize: '0.85rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <FaIdCardAlt /> Solicitudes de Mentores
-          </button>
           <button className="btn-secondary" onClick={exportCSV} style={{ fontSize: '0.85rem', padding: '6px 12px' }}>
             Descargar CSV
           </button>

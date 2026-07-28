@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaHome, FaCalendarAlt, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck, FaUserCircle, FaUserTie, FaClock, FaUsers } from 'react-icons/fa';
+import { FaHome, FaCalendarAlt, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck, FaUserCircle, FaUserTie, FaClock, FaUsers, FaIdCardAlt, FaShieldAlt } from 'react-icons/fa';
 import api from '../api/axios';
 import { Toaster } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
@@ -36,7 +36,9 @@ const Layout = () => {
       items.push({ path: '/dashboard/solicitudes', label: 'Todas las Solicitudes', icon: <FaClipboardList /> });
       items.push({ path: '/dashboard/agenda', label: 'Agenda Global', icon: <FaCalendarAlt /> });
       if (isAdmin) {
+        items.push({ path: '/dashboard/postulaciones', label: 'Mentores Postulantes', icon: <FaIdCardAlt /> });
         items.push({ path: '/dashboard/usuarios', label: 'Gestión Usuarios', icon: <FaUsers /> });
+        items.push({ path: '/dashboard/auditoria', label: 'Auditoría Sistema', icon: <FaShieldAlt /> });
       }
     }
     
@@ -128,9 +130,9 @@ const Layout = () => {
                   gap: '12px',
                   padding: '12px 16px',
                   borderRadius: '6px',
-                  color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  backgroundColor: isActive ? 'var(--bg-secondary)' : 'transparent',
-                  fontWeight: isActive ? '600' : '400',
+                  color: isActive ? 'white' : 'var(--text-secondary)',
+                  backgroundColor: isActive ? 'var(--primary-color)' : 'transparent',
+                  fontWeight: isActive ? '600' : '500',
                   textDecoration: 'none',
                   transition: 'background-color 0.15s'
                 }}
