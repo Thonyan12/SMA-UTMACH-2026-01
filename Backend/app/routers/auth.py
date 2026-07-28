@@ -7,15 +7,21 @@ from app.database import get_db
 from app.models.users import Cuenta, CuentaRol, Rol, Perfil
 from app.models.actors import Estudiante, Mentor
 from app.models.academic import PerfilAcademico
-from app.schemas.auth import Token, UserRegister, AuthMeResponse
+from app.schemas.auth import Token, UserRegister, AuthMeResponse, ForgotPasswordRequest, ResetPasswordRequest, Verify2FARequest
 from app.schemas.users import CuentaResponse
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.core.dependencies import get_current_user
+from app.models.security import CodigoVerificacion
+from app.services.email_service import send_email
+import random
+import string
+from fastapi import Header
 
 router = APIRouter()
 
+
 @router.post("/login", response_model=Token)
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), x_device_id: str = Header(default=None), db: Session = Depends(get_db)):
     user = db.query(Cuenta).filter(Cuenta.correo == form_data.username).first()
     
     if not user or not verify_password(form_data.password, user.password_hash):
@@ -27,11 +33,133 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     if user.estado != 1:
         raise HTTPException(status_code=400, detail="Usuario inactivo")
         
+    # LOGICA 2FA:
+    # Si no hay x_device_id, consideramos que es un dispositivo nuevo
+    if not x_device_id:
+        # Generar código 2FA
+        codigo = ''.join(random.choices(string.digits, k=6))
+        expiracion = datetime.utcnow() + timedelta(minutes=15)
+        
+        nuevo_codigo = CodigoVerificacion(
+            cuenta_id=user.id,
+            codigo=codigo,
+            tipo='2fa',
+            fecha_expiracion=expiracion
+        )
+        db.add(nuevo_codigo)
+        db.commit()
+        
+        # Enviar correo
+        html = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333;">
+                <h2 style="color: #0056b3;">Sistema de Mentorías SMA</h2>
+                <p>Hola,</p>
+                <p>Hemos detectado un intento de inicio de sesión desde un nuevo dispositivo. Utiliza el siguiente código temporal de 6 dígitos para verificar tu identidad y acceder al sistema:</p>
+                <div style="margin: 20px 0; padding: 15px; background-color: #f4f4f4; border-radius: 8px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 32px; letter-spacing: 5px;">{codigo}</h1>
+                </div>
+                <p>Este código expirará en 15 minutos.</p>
+                <p>Si no fuiste tú, por favor ignora este mensaje.</p>
+                <br/>
+                <p>Atentamente,<br/>Equipo de Soporte SMA</p>
+            </body>
+        </html>
+        """
+        send_email(user.correo, "Código de Verificación 2FA - SMA", html)
+        
+        return {"access_token": None, "token_type": None, "requires_2fa": True, "cuenta_id": user.id, "message": "Código enviado al correo"}
+        
     user.ultimo_acceso = datetime.utcnow()
     db.commit()
         
     access_token = create_access_token(data={"sub": user.correo})
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "requires_2fa": False}
+
+@router.post("/verify-2fa", response_model=Token)
+def verify_2fa(req: Verify2FARequest, db: Session = Depends(get_db)):
+    user = db.query(Cuenta).filter(Cuenta.id == req.cuenta_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    cod = db.query(CodigoVerificacion).filter(
+        CodigoVerificacion.cuenta_id == req.cuenta_id,
+        CodigoVerificacion.codigo == req.codigo,
+        CodigoVerificacion.tipo == '2fa',
+        CodigoVerificacion.fecha_expiracion > datetime.utcnow()
+    ).first()
+    
+    if not cod:
+        raise HTTPException(status_code=400, detail="Código inválido o expirado")
+        
+    db.delete(cod)
+    
+    user.ultimo_acceso = datetime.utcnow()
+    db.commit()
+    
+    access_token = create_access_token(data={"sub": user.correo})
+    return {"access_token": access_token, "token_type": "bearer", "requires_2fa": False}
+
+@router.post("/forgot-password")
+def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(Cuenta).filter(Cuenta.correo == req.correo).first()
+    if not user:
+        # Por seguridad no indicamos si el correo existe o no
+        return {"message": "Si el correo está registrado, recibirás un código."}
+        
+    codigo = ''.join(random.choices(string.digits, k=6))
+    expiracion = datetime.utcnow() + timedelta(minutes=15)
+    
+    nuevo_codigo = CodigoVerificacion(
+        cuenta_id=user.id,
+        codigo=codigo,
+        tipo='recovery',
+        fecha_expiracion=expiracion
+    )
+    db.add(nuevo_codigo)
+    db.commit()
+    
+    html = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #0056b3;">Sistema de Mentorías SMA</h2>
+            <p>Hola,</p>
+            <p>Has solicitado restablecer tu contraseña. Utiliza el siguiente código temporal de 6 dígitos para cambiar tu contraseña de acceso:</p>
+            <div style="margin: 20px 0; padding: 15px; background-color: #f4f4f4; border-radius: 8px; text-align: center;">
+                <h1 style="margin: 0; font-size: 32px; letter-spacing: 5px;">{codigo}</h1>
+            </div>
+            <p>Este código expirará en 15 minutos.</p>
+            <p>Si no solicitaste este cambio, puedes ignorar este correo de forma segura.</p>
+            <br/>
+            <p>Atentamente,<br/>Equipo de Soporte SMA</p>
+        </body>
+    </html>
+    """
+    send_email(user.correo, "Recuperación de Contraseña - SMA", html)
+    
+    return {"message": "Si el correo está registrado, recibirás un código."}
+
+@router.post("/reset-password")
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(Cuenta).filter(Cuenta.correo == req.correo).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    cod = db.query(CodigoVerificacion).filter(
+        CodigoVerificacion.cuenta_id == user.id,
+        CodigoVerificacion.codigo == req.codigo,
+        CodigoVerificacion.tipo == 'recovery',
+        CodigoVerificacion.fecha_expiracion > datetime.utcnow()
+    ).first()
+    
+    if not cod:
+        raise HTTPException(status_code=400, detail="Código inválido o expirado")
+        
+    user.password_hash = get_password_hash(req.nueva_password)
+    db.delete(cod)
+    db.commit()
+    
+    return {"message": "Contraseña actualizada correctamente"}
 
 @router.post("/register", response_model=CuentaResponse)
 def register_user(user_in: UserRegister, db: Session = Depends(get_db)):

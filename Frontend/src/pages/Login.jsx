@@ -1,31 +1,65 @@
 import React, { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { FaEnvelope, FaLock } from 'react-icons/fa';
+import { FaEnvelope, FaLock, FaKey, FaEye, FaEyeSlash } from 'react-icons/fa';
+import toast from 'react-hot-toast';
 
 const Login = () => {
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
+  const [codigo2fa, setCodigo2fa] = useState('');
+  
+  const [step, setStep] = useState(1); // 1 = Login normal, 2 = Código 2FA
+  const [cuentaId, setCuentaId] = useState(null);
+  
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const { login } = useContext(AuthContext);
+  const { login, login2FA } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
     try {
-      await login(correo, password);
-      navigate('/dashboard'); // Redirigir al Dashboard en caso de éxito
+      const result = await login(correo, password);
+      
+      if (result && result.requires_2fa) {
+        setCuentaId(result.cuenta_id);
+        setStep(2); // Pasar al paso de 2FA
+        toast.success(result.message || 'Código enviado al correo');
+      } else {
+        navigate('/dashboard'); // Redirigir al Dashboard
+      }
     } catch (err) {
       if (err.response && err.response.status === 401) {
         setError('Credenciales incorrectas. Verifica tu correo y contraseña.');
+      } else if (err.response && err.response.status === 400) {
+        setError(err.response.data.detail || 'Error de validación');
       } else {
         setError('Error al conectar con el servidor. Intenta de nuevo más tarde.');
       }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handle2FASubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      await login2FA(cuentaId, codigo2fa);
+      toast.success('Dispositivo verificado correctamente');
+      navigate('/dashboard');
+    } catch (err) {
+      const errorMsg = err.response?.data?.detail || 'Código incorrecto o expirado';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -44,7 +78,7 @@ const Login = () => {
         <div style={{ textAlign: 'center', marginBottom: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <img src="/logo-horizontal-300x99.png" alt="UTMACH Logo" style={{ width: '100%', maxWidth: '220px', marginBottom: '16px' }} />
           <p style={{ color: 'var(--text-secondary)' }}>
-            Inicia sesión para acceder al sistema
+            {step === 1 ? 'Inicia sesión para acceder al sistema' : 'Verificación de dos pasos (Nuevo Dispositivo)'}
           </p>
         </div>
 
@@ -62,74 +96,154 @@ const Login = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: 'var(--text-primary)' }}>
-              Correo Institucional
-            </label>
-            <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
-                <FaEnvelope />
+        {step === 1 ? (
+          <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: 'var(--text-primary)' }}>
+                Correo Institucional
+              </label>
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
+                  <FaEnvelope />
+                </div>
+                <input 
+                  type="email" 
+                  value={correo}
+                  onChange={(e) => setCorreo(e.target.value)}
+                  placeholder="ejemplo@utmachala.edu.ec"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 12px 12px 36px',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    fontSize: '1rem',
+                    outline: 'none',
+                    transition: 'border-color 0.15s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
+                />
               </div>
-              <input 
-                type="email" 
-                value={correo}
-                onChange={(e) => setCorreo(e.target.value)}
-                placeholder="ejemplo@utmachala.edu.ec"
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px 12px 12px 36px',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '6px',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  transition: 'border-color 0.15s'
-                }}
-                onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
-                onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
-              />
             </div>
-          </div>
 
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: 'var(--text-primary)' }}>
-              Contraseña
-            </label>
-            <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
-                <FaLock />
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <label style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
+                  Contraseña
+                </label>
+                <Link to="/forgot-password" style={{ color: 'var(--accent-primary)', fontSize: '0.9rem', textDecoration: 'none' }}>
+                  ¿Olvidaste tu contraseña?
+                </Link>
               </div>
-              <input 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Ingresa tu contraseña"
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px 12px 12px 36px',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '6px',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  transition: 'border-color 0.15s'
-                }}
-                onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
-                onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
-              />
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
+                  <FaLock />
+                </div>
+                <input 
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Ingresa tu contraseña"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 40px 12px 36px',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    fontSize: '1rem',
+                    outline: 'none',
+                    transition: 'border-color 0.15s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 0
+                  }}
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
             </div>
-          </div>
 
-          <button 
-            type="submit" 
-            className="btn-primary" 
-            disabled={isLoading}
-            style={{ marginTop: '8px', width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}
-          >
-            {isLoading ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '2px', borderColor: 'white', borderTopColor: 'transparent' }}></span> : 'Ingresar'}
-          </button>
-        </form>
+            <button 
+              type="submit" 
+              className="btn-primary" 
+              disabled={isLoading}
+              style={{ marginTop: '8px', width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}
+            >
+              {isLoading ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '2px', borderColor: 'white', borderTopColor: 'transparent' }}></span> : 'Ingresar'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handle2FASubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: 'var(--text-primary)' }}>
+                Código de 6 dígitos
+              </label>
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
+                  <FaKey />
+                </div>
+                <input 
+                  type="text" 
+                  value={codigo2fa}
+                  onChange={(e) => setCodigo2fa(e.target.value)}
+                  placeholder="Ej. 123456"
+                  maxLength={6}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 12px 12px 36px',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    fontSize: '1rem',
+                    outline: 'none',
+                    letterSpacing: '2px',
+                    transition: 'border-color 0.15s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
+                />
+              </div>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                Hemos enviado un código temporal a tu correo. Revísalo e ingrésalo aquí.
+              </p>
+            </div>
+
+            <button 
+              type="submit" 
+              className="btn-primary" 
+              disabled={isLoading}
+              style={{ marginTop: '8px', width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}
+            >
+              {isLoading ? <span className="spinner" style={{ width: '20px', height: '20px', display: 'inline-block', borderWidth: '2px', borderColor: 'white', borderTopColor: 'transparent' }}></span> : 'Verificar y Entrar'}
+            </button>
+            <button 
+              type="button" 
+              onClick={() => { setStep(1); setCodigo2fa(''); setError(''); }}
+              className="btn-secondary" 
+              style={{ width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}
+            >
+              Volver
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

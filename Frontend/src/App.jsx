@@ -12,6 +12,8 @@ import Profile from './pages/Profile';
 import DirectorioMentores from './pages/DirectorioMentores';
 import DisponibilidadMentor from './pages/DisponibilidadMentor';
 import GestionUsuarios from './pages/GestionUsuarios';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
           {/* Rutas Públicas */}
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Rutas Privadas Protegidas */}
           <Route path="/dashboard" element={<ProtectedRoute />}>

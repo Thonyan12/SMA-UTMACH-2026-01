@@ -36,9 +36,18 @@ export const AuthProvider = ({ children }) => {
     formData.append('username', correo);
     formData.append('password', password);
 
+    const deviceId = localStorage.getItem('device_id') || '';
+
     const response = await api.post('/auth/login', formData, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      headers: { 
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'x-device-id': deviceId
+      }
     });
+
+    if (response.data.requires_2fa) {
+      return response.data; // Return early for Login.jsx to handle 2FA
+    }
 
     const { access_token } = response.data;
     
@@ -51,6 +60,27 @@ export const AuthProvider = ({ children }) => {
     
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
+    return { success: true };
+  };
+
+  const login2FA = async (cuenta_id, codigo) => {
+    // Generate a secure random device_id if not exists
+    let deviceId = localStorage.getItem('device_id');
+    if (!deviceId) {
+      deviceId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      localStorage.setItem('device_id', deviceId);
+    }
+    
+    const response = await api.post('/auth/verify-2fa', { cuenta_id, codigo, device_id: deviceId });
+    const { access_token } = response.data;
+    
+    localStorage.setItem('token', access_token);
+    const userResponse = await api.get('/auth/me');
+    const userData = userResponse.data;
+    
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+    return { success: true };
   };
 
   const logout = () => {
@@ -60,8 +90,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {!loading && children}
+    <AuthContext.Provider value={{ user, login, login2FA, logout, loading }}>
+      {children}
     </AuthContext.Provider>
   );
 };
