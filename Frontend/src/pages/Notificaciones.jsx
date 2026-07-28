@@ -56,7 +56,7 @@ const Notificaciones = () => {
   return (
     <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
-        <h2 style={{ fontWeight: 'bold', color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center' }}>
+        <h2 style={{ fontWeight: 'bold', color: 'var(--accent-primary)', margin: 0, display: 'flex', alignItems: 'center' }}>
           <FaBell style={{ color: 'var(--primary-color)', marginRight: '12px' }} /> 
           Tus Notificaciones
         </h2>

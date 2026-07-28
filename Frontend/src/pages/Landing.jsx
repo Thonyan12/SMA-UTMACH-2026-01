@@ -161,7 +161,7 @@ const Landing = () => {
             }}>
               <FaUserGraduate />
             </div>
-            <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', color: 'var(--text-primary)' }}>Para Estudiantes</h3>
+            <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', color: 'var(--accent-primary)' }}>Para Estudiantes</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
               Solicita ayuda en las materias que más se te dificultan y agenda sesiones personalizadas.
             </p>
@@ -176,7 +176,7 @@ const Landing = () => {
             }}>
               <FaChalkboardTeacher />
             </div>
-            <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', color: 'var(--text-primary)' }}>Para Mentores</h3>
+            <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', color: 'var(--accent-primary)' }}>Para Mentores</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
               Comparte tu conocimiento, gestiona tus solicitudes y organiza tu disponibilidad fácilmente.
             </p>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaShieldAlt, FaChevronLeft, FaChevronRight, FaSearch, FaAngleDown, FaAngleUp } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaSearch, FaAngleDown, FaAngleUp } from 'react-icons/fa';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 
@@ -74,9 +74,8 @@ const Auditoria = () => {
   return (
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
-        <FaShieldAlt style={{ fontSize: '2rem', color: 'var(--primary-color)', marginRight: '16px' }} />
         <div>
-          <h1 style={{ margin: 0, fontSize: '1.8rem', color: 'var(--text-primary)' }}>Auditoría del Sistema</h1>
+          <h1 style={{ margin: 0, fontSize: '1.8rem', color: 'var(--accent-primary)' }}>Auditoría del Sistema</h1>
           <p style={{ margin: 0, color: 'var(--text-muted)' }}>Registro de eventos y cambios en la base de datos</p>
         </div>
       </div>
@@ -103,7 +102,7 @@ const Auditoria = () => {
         </div>
         <button 
           onClick={handleFiltrar}
-          style={{ padding: '10px 20px', backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}
+          style={{ padding: '10px 20px', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}
         >
           <FaSearch /> Filtrar
         </button>
@@ -137,7 +136,7 @@ const Auditoria = () => {
                       <td style={{ padding: '15px', fontWeight: '500' }}>{formatFecha(item.fecha)}</td>
                       <td style={{ padding: '15px' }}>{item.usuario}</td>
                       <td style={{ padding: '15px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>{item.ip || 'Local'}</td>
-                      <td style={{ padding: '15px', fontWeight: 'bold', color: 'var(--primary-color)' }}>{item.tabla}</td>
+                      <td style={{ padding: '15px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>{item.tabla}</td>
                       <td style={{ padding: '15px' }}>
                         <span style={{ 
                           backgroundColor: `${getActionColor(item.accion)}20`, 
@@ -153,7 +152,7 @@ const Auditoria = () => {
                       <td style={{ padding: '15px', textAlign: 'right' }}>
                         <button 
                           onClick={() => toggleExpand(item.id)}
-                          style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                          style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
                         >
                           Detalles {expandedId === item.id ? <FaAngleUp /> : <FaAngleDown />}
                         </button>
@@ -199,7 +198,7 @@ const Auditoria = () => {
               disabled={skip === 0}
               style={{ 
                 padding: '8px 16px', backgroundColor: skip === 0 ? '#e9ecef' : 'white', 
-                color: skip === 0 ? '#6c757d' : 'var(--primary-color)', border: '1px solid var(--border-color)', 
+                color: skip === 0 ? '#6c757d' : 'var(--accent-primary)', border: '1px solid var(--border-color)', 
                 borderRadius: '8px', cursor: skip === 0 ? 'not-allowed' : 'pointer', 
                 display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' 
               }}
@@ -211,7 +210,7 @@ const Auditoria = () => {
               disabled={skip + limit >= total}
               style={{ 
                 padding: '8px 16px', backgroundColor: skip + limit >= total ? '#e9ecef' : 'white', 
-                color: skip + limit >= total ? '#6c757d' : 'var(--primary-color)', border: '1px solid var(--border-color)', 
+                color: skip + limit >= total ? '#6c757d' : 'var(--accent-primary)', border: '1px solid var(--border-color)', 
                 borderRadius: '8px', cursor: skip + limit >= total ? 'not-allowed' : 'pointer', 
                 display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' 
               }}

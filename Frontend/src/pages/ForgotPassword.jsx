@@ -47,7 +47,7 @@ const ForgotPassword = () => {
       <div className="card-panel" style={{ width: '100%', maxWidth: '420px', padding: '40px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <img src="/logo-horizontal-300x99.png" alt="UTMACH Logo" style={{ width: '100%', maxWidth: '220px', marginBottom: '16px' }} />
-          <h2 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>Recuperar Contraseña</h2>
+          <h2 style={{ margin: '0 0 8px 0', color: 'var(--accent-primary)' }}>Recuperar Contraseña</h2>
           <p style={{ color: 'var(--text-secondary)' }}>
             Ingresa tu correo institucional y te enviaremos un código de recuperación.
           </p>

@@ -131,7 +131,7 @@ const Layout = () => {
                   padding: '12px 16px',
                   borderRadius: '6px',
                   color: isActive ? 'white' : 'var(--text-secondary)',
-                  backgroundColor: isActive ? 'var(--primary-color)' : 'transparent',
+                  backgroundColor: isActive ? 'var(--accent-primary)' : 'transparent',
                   fontWeight: isActive ? '600' : '500',
                   textDecoration: 'none',
                   transition: 'background-color 0.15s'

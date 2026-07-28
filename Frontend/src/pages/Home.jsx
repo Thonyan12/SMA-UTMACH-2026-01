@@ -49,7 +49,7 @@ const Home = () => {
   if (loading) {
     return (
       <div style={{ padding: '24px' }}>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '24px' }}>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: '600', color: 'var(--accent-primary)', marginBottom: '24px' }}>
           Mi Panel
         </h1>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px', marginBottom: '24px' }}>
@@ -65,7 +65,7 @@ const Home = () => {
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
       <header style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--accent-primary)', letterSpacing: '-0.02em' }}>
           ¡Hola, {user?.nombres?.split(' ')[0] || 'Usuario'}! 👋
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', marginTop: '4px' }}>

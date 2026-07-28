@@ -493,7 +493,7 @@ const Solicitudes = () => {
                 )}
               </div>
               
-              <h2 style={{ margin: '0 0 4px 0', fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', textAlign: 'center' }}>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: '1.5rem', fontWeight: '700', color: 'var(--accent-primary)', textAlign: 'center' }}>
                 {selectedProfile.perfil?.nombres} {selectedProfile.perfil?.apellidos}
               </h2>
               
@@ -530,13 +530,13 @@ const Solicitudes = () => {
               {selectedProfile.role === 'mentor' && (
                 <>
                   <div>
-                    <h3 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '2px solid var(--accent-primary)', paddingBottom: '4px', display: 'inline-block' }}>Sobre mí</h3>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: 'var(--accent-primary)', borderBottom: '2px solid var(--accent-primary)', paddingBottom: '4px', display: 'inline-block' }}>Sobre mí</h3>
                     <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                       {selectedProfile.mentor?.biografia || <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>El misterio lo hace interesante. (Sin biografía)</span>}
                     </div>
                   </div>
                   <div>
-                    <h3 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '2px solid var(--accent-primary)', paddingBottom: '4px', display: 'inline-block' }}>Experiencia</h3>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: 'var(--accent-primary)', borderBottom: '2px solid var(--accent-primary)', paddingBottom: '4px', display: 'inline-block' }}>Experiencia</h3>
                     <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                       {selectedProfile.mentor?.experiencia || <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Sin experiencia registrada.</span>}
                     </div>
@@ -726,7 +726,7 @@ const Solicitudes = () => {
       {showAcceptModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100, backdropFilter: 'blur(3px)' }}>
           <div className="modal-content card-panel" style={{ width: '100%', maxWidth: '400px', padding: '24px', position: 'relative' }}>
-            <h2 style={{ marginTop: 0, color: 'var(--text-primary)', marginBottom: '16px' }}>Aprobar Solicitud</h2>
+            <h2 style={{ marginTop: 0, color: 'var(--accent-primary)', marginBottom: '16px' }}>Aprobar Solicitud</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.9rem' }}>
               Para programar esta mentoría, por favor ingresa el enlace de la reunión virtual donde se llevará a cabo la sesión.
             </p>
