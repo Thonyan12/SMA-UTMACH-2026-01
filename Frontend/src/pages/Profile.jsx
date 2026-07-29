@@ -195,25 +195,37 @@ const Profile = () => {
       </div>
 
       {/* SECCIÓN DE LOGROS (GAMIFICACIÓN) PARA MENTORES */}
-      {user.roles.includes('mentor') && logros.length > 0 && (
+      {user.roles.includes('mentor') && (
         <div className="card-panel" style={{ marginTop: '24px', padding: '32px' }}>
           <h2 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <FaTrophy color="#eab308" /> Mis Insignias y Logros
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '20px' }}>
-            {logros.map((ml) => (
-              <div key={ml.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '16px', backgroundColor: '#fdfbeb', border: '1px solid #fef08a', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(234, 179, 8, 0.1)' }}>
-                <div style={{ fontSize: '2.5rem', color: '#eab308', marginBottom: '12px' }}>
-                  {ml.logro.icono === 'FaMedal' && <FaMedal />}
-                  {ml.logro.icono === 'FaStar' && <FaStar />}
-                  {ml.logro.icono === 'FaTrophy' && <FaTrophy />}
+          
+          {logros.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '20px' }}>
+              {logros.map((ml) => (
+                <div key={ml.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '16px', backgroundColor: '#fdfbeb', border: '1px solid #fef08a', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(234, 179, 8, 0.1)' }}>
+                  <div style={{ fontSize: '2.5rem', color: '#eab308', marginBottom: '12px' }}>
+                    {ml.logro.icono === 'FaMedal' && <FaMedal />}
+                    {ml.logro.icono === 'FaStar' && <FaStar />}
+                    {ml.logro.icono === 'FaTrophy' && <FaTrophy />}
+                  </div>
+                  <h4 style={{ margin: '0 0 8px 0', color: '#854d0e', fontSize: '0.95rem' }}>{ml.logro.nombre}</h4>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#a16207' }}>{ml.logro.descripcion}</p>
+                  <small style={{ marginTop: '10px', fontSize: '0.65rem', color: '#ca8a04' }}>Obtenido: {formatDate(ml.fecha_obtenido)}</small>
                 </div>
-                <h4 style={{ margin: '0 0 8px 0', color: '#854d0e', fontSize: '0.95rem' }}>{ml.logro.nombre}</h4>
-                <p style={{ margin: 0, fontSize: '0.75rem', color: '#a16207' }}>{ml.logro.descripcion}</p>
-                <small style={{ marginTop: '10px', fontSize: '0.65rem', color: '#ca8a04' }}>Obtenido: {formatDate(ml.fecha_obtenido)}</small>
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: '24px', textAlign: 'center', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px dashed #d1d5db' }}>
+              <div style={{ fontSize: '2rem', color: '#9ca3af', marginBottom: '12px' }}>
+                <FaMedal />
               </div>
-            ))}
-          </div>
+              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                Aún no has obtenido ningún logro. ¡Sigue impartiendo mentorías para desbloquear medallas!
+              </p>
+            </div>
+          )}
         </div>
       )}
 
