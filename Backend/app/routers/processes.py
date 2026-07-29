@@ -1246,3 +1246,62 @@ def crear_reporte_sesion(sesion_id: int, reporte: ReporteSesionCreate, db: Sessi
     db.commit()
     
     return nuevo_reporte
+
+@router.get("/reportes/")
+def listar_reportes(db: Session = Depends(get_db)):
+    """Listar todos los reportes de sesiones para el administrador."""
+    reportes = db.query(ReporteSesion).all()
+    orden_estado = {'pendiente': 0, 'revisado': 1, 'resuelto': 2}
+    reportes.sort(key=lambda r: (orden_estado.get(r.estado, 99), -(r.fecha_creacion.timestamp() if r.fecha_creacion else 0)))
+    result = []
+    for r in reportes:
+        # Nombre del reportador
+        cuenta = db.query(Cuenta).filter(Cuenta.id == r.reportador_id).first()
+        perfil = db.query(Perfil).filter(Perfil.cuenta_id == cuenta.id).first() if cuenta else None
+        nombre_reportador = f"{perfil.nombres} {perfil.apellidos}" if perfil else "Desconocido"
+        
+        # Info de la sesión — SesionMentoria no tiene 'titulo', usamos la fecha de inicio
+        sesion = db.query(SesionMentoria).filter(SesionMentoria.id == r.sesion_id).first()
+        if sesion:
+            fecha_str = sesion.inicio.strftime("%d/%m/%Y %H:%M") if sesion.inicio else ""
+            sesion_label = f"Sesión del {fecha_str}"
+            # Intentar obtener la materia de la solicitud relacionada
+            try:
+                from app.models.academic import Materia
+                sol = db.query(SolicitudMentoria).filter(SolicitudMentoria.id == sesion.solicitud_id).first()
+                if sol:
+                    mat = db.query(Materia).filter(Materia.id == sol.materia_id).first()
+                    if mat:
+                        sesion_label = f"{mat.nombre} — {fecha_str}"
+            except Exception:
+                pass
+        else:
+            sesion_label = f"Sesión #{r.sesion_id}"
+        
+        result.append({
+            "id": r.id,
+            "sesion_id": r.sesion_id,
+            "sesion_titulo": sesion_label,
+            "reportador_id": r.reportador_id,
+            "reportador_nombre": nombre_reportador,
+            "descripcion": r.descripcion,
+            "estado": r.estado,
+            "fecha_creacion": r.fecha_creacion,
+        })
+    return result
+
+class ActualizarEstadoReporte(BaseModel):
+    estado: str  # 'pendiente', 'revisado', 'resuelto'
+
+@router.put("/reportes/{id}/estado")
+def actualizar_estado_reporte(id: int, body: ActualizarEstadoReporte, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """Actualizar el estado de un reporte (para administradores)."""
+    reporte = db.query(ReporteSesion).filter(ReporteSesion.id == id).first()
+    if not reporte:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+    if body.estado not in ('pendiente', 'revisado', 'resuelto'):
+        raise HTTPException(status_code=400, detail="Estado inválido")
+    reporte.estado = body.estado
+    db.commit()
+    db.refresh(reporte)
+    return {"message": "Estado actualizado", "id": id, "estado": reporte.estado}

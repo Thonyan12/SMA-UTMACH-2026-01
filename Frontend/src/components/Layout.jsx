@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaHome, FaCalendarAlt, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck, FaUserCircle, FaUserTie, FaClock, FaUsers, FaIdCardAlt, FaShieldAlt, FaArrowUp } from 'react-icons/fa';
+import { FaHome, FaCalendarAlt, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck, FaUserCircle, FaUserTie, FaClock, FaUsers, FaIdCardAlt, FaShieldAlt, FaArrowUp, FaFlag } from 'react-icons/fa';
 import api from '../api/axios';
 import { Toaster } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
@@ -57,6 +57,7 @@ const Layout = () => {
       items.push({ path: '/dashboard/solicitudes', label: 'Todas las Solicitudes', icon: <FaClipboardList /> });
       items.push({ path: '/dashboard/agenda', label: 'Agenda Global', icon: <FaCalendarAlt /> });
       items.push({ path: '/dashboard/postulaciones', label: 'Mentores Postulantes', icon: <FaIdCardAlt /> });
+      items.push({ path: '/dashboard/reportes', label: 'Reportes', icon: <FaFlag /> });
       items.push({ path: '/dashboard/usuarios', label: 'Gestión Usuarios', icon: <FaUsers /> });
       items.push({ path: '/dashboard/auditoria', label: 'Auditoría Sistema', icon: <FaShieldAlt /> });
     }
