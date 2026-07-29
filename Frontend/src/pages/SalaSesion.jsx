@@ -10,10 +10,7 @@ const SalaSesion = () => {
   const token = localStorage.getItem('token');
   const [sesion, setSesion] = useState(null);
   const [mensajes, setMensajes] = useState([]);
-  const [recursos, setRecursos] = useState([]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
-  const [recursoNombre, setRecursoNombre] = useState('');
-  const [recursoUrl, setRecursoUrl] = useState('');
   
   // Reporte
   const [showReport, setShowReport] = useState(false);
@@ -39,14 +36,12 @@ const SalaSesion = () => {
       // Usaremos un endpoint para obtener los mensajes anteriores
       const headers = { 'Authorization': `Bearer ${token}` };
       
-      const [resMsgs, resRecursos, resSesion] = await Promise.all([
+      const [resMsgs, resSesion] = await Promise.all([
         fetch(`http://127.0.0.1:8000/api/processes/sesiones/${id}/mensajes`, { headers }),
-        fetch(`http://127.0.0.1:8000/api/processes/sesiones/${id}/recursos`, { headers }),
         fetch(`http://127.0.0.1:8000/api/processes/sesiones-mentoria/${id}`, { headers })
       ]);
       
       if (resMsgs.ok) setMensajes(await resMsgs.json());
-      if (resRecursos.ok) setRecursos(await resRecursos.json());
       if (resSesion.ok) setSesion(await resSesion.json());
     } catch (error) {
       console.error(error);
@@ -69,30 +64,6 @@ const SalaSesion = () => {
     }
   };
 
-  const subirRecurso = async (e) => {
-    e.preventDefault();
-    if (!recursoNombre || !recursoUrl) return;
-    try {
-      const res = await fetch(`http://127.0.0.1:8000/api/processes/sesiones/${id}/recursos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-          sesion_id: parseInt(id),
-          subido_por: user.id,
-          nombre_archivo: recursoNombre,
-          url_archivo: recursoUrl
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setRecursos([data, ...recursos]);
-        setRecursoNombre('');
-        setRecursoUrl('');
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
 
   const enviarReporte = async () => {
     if (!reporteDesc.trim()) return;
@@ -210,53 +181,6 @@ const SalaSesion = () => {
               <FaPaperPlane size={18} style={{ marginLeft: '-2px' }} />
             </button>
           </form>
-        </div>
-
-        {/* RECURSOS PANEL */}
-        <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', padding: '20px' }}>
-          <h4 style={{ margin: '0 0 15px 0', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>Recursos Compartidos</h4>
-          
-          <form onSubmit={subirRecurso} style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <input 
-              type="text" 
-              className="form-control" 
-              placeholder="Nombre del recurso (ej. Taller PDF)"
-              value={recursoNombre}
-              onChange={(e) => setRecursoNombre(e.target.value)}
-              required
-            />
-            <input 
-              type="url" 
-              className="form-control" 
-              placeholder="Enlace URL (ej. Google Drive)"
-              value={recursoUrl}
-              onChange={(e) => setRecursoUrl(e.target.value)}
-              required
-            />
-            <button type="submit" className="btn-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px' }}>
-              <FaLink /> Compartir Enlace
-            </button>
-          </form>
-
-          <div style={{ flexGrow: 1, overflowY: 'auto' }}>
-            {recursos.length === 0 ? (
-              <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No hay recursos compartidos.</p>
-            ) : (
-              <ul style={{ listStyleType: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {recursos.map((r, idx) => (
-                  <li key={idx} style={{ padding: '10px', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <strong style={{ fontSize: '0.9rem', color: 'var(--accent-primary)' }}>{r.nombre_archivo}</strong>
-                      <a href={r.url_archivo} target="_blank" rel="noreferrer" style={{ color: 'var(--text-muted)' }} title="Abrir enlace">
-                        <FaExternalLinkAlt />
-                      </a>
-                    </div>
-                    <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Por: {r.subido_por_nombre}</small>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
         </div>
 
       </div>
