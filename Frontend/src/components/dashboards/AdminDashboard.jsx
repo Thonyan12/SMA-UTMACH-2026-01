@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUsers, FaUserGraduate, FaFileAlt, FaCheckDouble, FaStar, FaIdCardAlt, FaShieldAlt } from 'react-icons/fa';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -90,6 +90,30 @@ const AdminDashboard = ({ stats }) => {
             (stats.solicitudes_por_estado.find(s => s.name === 'aceptada')?.value || 0) + 
             (stats.solicitudes_por_estado.find(s => s.name === 'asignada')?.value || 0)
         } color="var(--success)" />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginBottom: '16px' }}>
+        {/* Tendencia de Solicitudes (Area Chart) */}
+        <div className="card-panel" style={{ padding: '16px', height: '300px', display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '12px' }}>Solicitudes en los últimos 7 días</h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={stats?.tendencia_solicitudes || []}
+              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="colorTendencia" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--accent-primary)" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="var(--accent-primary)" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="name" tick={{fontSize: 12}} />
+              <YAxis />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <Tooltip />
+              <Area type="monotone" dataKey="value" stroke="var(--accent-primary)" fillOpacity={1} fill="url(#colorTendencia)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>

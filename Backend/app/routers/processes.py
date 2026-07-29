@@ -9,7 +9,7 @@ from app.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.processes import (
     SolicitudMentoria, SesionMentoria, Calificacion, Notificacion, HistorialCambio, PostulacionMentor,
-    MensajeSesion, RecursoSesion, ReporteSesion
+    MensajeSesion, RecursoSesion, ReporteSesion, CatLogro, MentorLogro
 )
 from app.models.actors import Estudiante, Mentor, MentorEspecialidad, DisponibilidadMentor
 from app.models.academic import PerfilAcademico, Carrera
@@ -24,7 +24,8 @@ from app.schemas.processes import (
     PostulacionMentorCreate, PostulacionMentorResponse,
     MensajeSesionCreate, MensajeSesionResponse,
     RecursoSesionCreate, RecursoSesionResponse,
-    ReporteSesionCreate, ReporteSesionResponse
+    ReporteSesionCreate, ReporteSesionResponse,
+    MentorLogroResponse
 )
 from app.services.email_service import send_email
 from datetime import datetime
@@ -199,12 +200,28 @@ def get_estadisticas(db: Session = Depends(get_db)):
     # Ordenar por promedio descendente y luego por cantidad de calificaciones
     ranking_mentores.sort(key=lambda x: (x["promedio"], x["total_calificaciones"]), reverse=True)
     
+    # Tendencia de solicitudes (Últimos 7 días)
+    try:
+        from sqlalchemy import text
+        tendencia_query = db.execute(text('''
+            SELECT TO_CHAR(fecha_creacion, 'YYYY-MM-DD') as fecha, COUNT(*) as cantidad
+            FROM solicitudes_mentoria
+            WHERE fecha_creacion >= CURRENT_DATE - 7
+            GROUP BY TO_CHAR(fecha_creacion, 'YYYY-MM-DD')
+            ORDER BY fecha ASC
+        ''')).fetchall()
+        tendencia_solicitudes = [{"name": row[0], "value": row[1]} for row in tendencia_query]
+    except Exception as e:
+        print("Error en tendencia_solicitudes:", e)
+        tendencia_solicitudes = []
+    
     return {
         "total_estudiantes": total_estudiantes,
         "total_mentores": total_mentores,
         "total_solicitudes": total_solicitudes,
         "solicitudes_por_estado": solicitudes_por_estado,
         "solicitudes_por_materia": solicitudes_por_materia,
+        "tendencia_solicitudes": tendencia_solicitudes,
         "ranking_mentores": ranking_mentores[:10]
     }
 
@@ -702,6 +719,45 @@ def create_calificacion(item: CalificacionCreate, db: Session = Depends(get_db))
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
+    
+    # Evaluar Logros
+    try:
+        sesion = db.query(SesionMentoria).filter(SesionMentoria.id == db_item.sesion_id).first()
+        if sesion:
+            solicitud = db.query(SolicitudMentoria).filter(SolicitudMentoria.id == sesion.solicitud_id).first()
+            if solicitud:
+                mentor_id = solicitud.mentor_id
+                
+                # Check 1: Primeros Pasos (1 sesión completada)
+                completadas = db.query(Calificacion).join(SesionMentoria).join(SolicitudMentoria).filter(SolicitudMentoria.mentor_id == mentor_id).count()
+                if completadas == 1:
+                    logro1 = db.query(CatLogro).filter(CatLogro.nombre == 'Primeros Pasos').first()
+                    if logro1 and not db.query(MentorLogro).filter(MentorLogro.mentor_id == mentor_id, MentorLogro.logro_id == logro1.id).first():
+                        db.add(MentorLogro(mentor_id=mentor_id, logro_id=logro1.id))
+                        # Notificar
+                        cuenta_id = get_cuenta_id_for_mentor(db, mentor_id)
+                        db.add(Notificacion(cuenta_id=cuenta_id, tipo="logro", titulo="¡Nuevo Logro Obtenido!", mensaje="Has obtenido la insignia: Primeros Pasos"))
+
+                # Check 2: Mentor Constante (5 sesiones completadas)
+                if completadas == 5:
+                    logro2 = db.query(CatLogro).filter(CatLogro.nombre == 'Mentor Constante').first()
+                    if logro2 and not db.query(MentorLogro).filter(MentorLogro.mentor_id == mentor_id, MentorLogro.logro_id == logro2.id).first():
+                        db.add(MentorLogro(mentor_id=mentor_id, logro_id=logro2.id))
+                        cuenta_id = get_cuenta_id_for_mentor(db, mentor_id)
+                        db.add(Notificacion(cuenta_id=cuenta_id, tipo="logro", titulo="¡Nuevo Logro Obtenido!", mensaje="Has obtenido la insignia: Mentor Constante"))
+
+                # Check 3: Mentor 5 Estrellas
+                if db_item.puntualidad == 5 and db_item.claridad == 5 and db_item.dominio_tema == 5:
+                    logro3 = db.query(CatLogro).filter(CatLogro.nombre == 'Mentor 5 Estrellas').first()
+                    if logro3 and not db.query(MentorLogro).filter(MentorLogro.mentor_id == mentor_id, MentorLogro.logro_id == logro3.id).first():
+                        db.add(MentorLogro(mentor_id=mentor_id, logro_id=logro3.id))
+                        cuenta_id = get_cuenta_id_for_mentor(db, mentor_id)
+                        db.add(Notificacion(cuenta_id=cuenta_id, tipo="logro", titulo="¡Nuevo Logro Obtenido!", mensaje="Has obtenido la insignia: Mentor 5 Estrellas"))
+
+                db.commit()
+    except Exception as e:
+        print(f"Error evaluando logros: {e}")
+
     return db_item
 
 @router.put("/calificaciones/{id}", response_model=CalificacionResponse)
@@ -725,6 +781,13 @@ def delete_calificacion(id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Calificación eliminada (Soft Delete) exitosamente"}
 
+
+# ==========================================
+# Gamificación (Logros)
+# ==========================================
+@router.get("/mentores/{mentor_id}/logros", response_model=List[MentorLogroResponse])
+def get_mentor_logros(mentor_id: int, db: Session = Depends(get_db)):
+    return db.query(MentorLogro).filter(MentorLogro.mentor_id == mentor_id).all()
 
 # ==========================================
 # CRUD para Notificaciones

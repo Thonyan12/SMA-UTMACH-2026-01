@@ -155,7 +155,30 @@ class EstadisticasResponse(BaseModel):
     total_solicitudes: int
     solicitudes_por_estado: List[Dict[str, Any]]
     solicitudes_por_materia: List[Dict[str, Any]]
+    tendencia_solicitudes: List[Dict[str, Any]] = []
     ranking_mentores: List[Dict[str, Any]] = []
+
+# =======================
+# Logros y Gamificacion
+# =======================
+class CatLogroResponse(BaseModel):
+    id: int
+    nombre: str
+    descripcion: str
+    icono: str
+    puntos_requeridos: int
+    fecha_creacion: datetime
+    class Config:
+        from_attributes = True
+
+class MentorLogroResponse(BaseModel):
+    id: int
+    mentor_id: int
+    logro_id: int
+    fecha_obtenido: datetime
+    logro: CatLogroResponse
+    class Config:
+        from_attributes = True
 
 # =======================
 # HistorialCambios

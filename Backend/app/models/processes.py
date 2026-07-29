@@ -138,3 +138,25 @@ class ReporteSesion(Base):
 
     sesion = relationship("SesionMentoria", backref="reportes")
     reportador = relationship("Cuenta")
+
+class CatLogro(Base):
+    __tablename__ = "cat_logros"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    nombre = Column(String(100), nullable=False)
+    descripcion = Column(String(500), nullable=False)
+    icono = Column(String(50), nullable=False)
+    puntos_requeridos = Column(Integer, default=0, nullable=False)
+    estado = Column(Integer, default=1, nullable=False)
+    fecha_creacion = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+
+    mentores = relationship("MentorLogro", back_populates="logro")
+
+class MentorLogro(Base):
+    __tablename__ = "mentor_logros"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    mentor_id = Column(Integer, ForeignKey("mentores.id", ondelete="CASCADE"), nullable=False)
+    logro_id = Column(Integer, ForeignKey("cat_logros.id", ondelete="CASCADE"), nullable=False)
+    fecha_obtenido = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+
+    mentor = relationship("Mentor")
+    logro = relationship("CatLogro", back_populates="mentores")

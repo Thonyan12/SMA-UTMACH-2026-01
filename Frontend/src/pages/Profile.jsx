@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api/axios';
-import { FaUserGraduate, FaChalkboardTeacher, FaUserShield, FaEnvelope, FaCalendarAlt, FaIdBadge, FaCheckCircle, FaTimesCircle, FaClock } from 'react-icons/fa';
+import { FaUserGraduate, FaChalkboardTeacher, FaUserShield, FaEnvelope, FaCalendarAlt, FaIdBadge, FaCheckCircle, FaTimesCircle, FaClock, FaMedal, FaStar, FaTrophy } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 const Profile = () => {
@@ -9,6 +9,8 @@ const Profile = () => {
   const [postulacion, setPostulacion] = useState(null);
   const [motivo, setMotivo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [logros, setLogros] = useState([]);
 
   useEffect(() => {
     if (user && user.roles.includes('estudiante') && !user.roles.includes('mentor')) {
@@ -21,6 +23,18 @@ const Profile = () => {
         }
       };
       fetchPostulacion();
+    }
+    
+    if (user && user.roles.includes('mentor') && user.mentor_id) {
+      const fetchLogros = async () => {
+        try {
+          const res = await api.get(`/processes/mentores/${user.mentor_id}/logros`);
+          if (res.data) setLogros(res.data);
+        } catch (error) {
+          console.error("Error al cargar logros:", error);
+        }
+      };
+      fetchLogros();
     }
   }, [user]);
 
@@ -178,8 +192,32 @@ const Profile = () => {
             </div>
           </div>
         </div>
-        
-        {/* Tarjeta de Postulación a Mentor (Solo si es estudiante y NO es mentor) */}
+      </div>
+
+      {/* SECCIÓN DE LOGROS (GAMIFICACIÓN) PARA MENTORES */}
+      {user.roles.includes('mentor') && logros.length > 0 && (
+        <div className="card-panel" style={{ marginTop: '24px', padding: '32px' }}>
+          <h2 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <FaTrophy color="#eab308" /> Mis Insignias y Logros
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '20px' }}>
+            {logros.map((ml) => (
+              <div key={ml.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '16px', backgroundColor: '#fdfbeb', border: '1px solid #fef08a', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(234, 179, 8, 0.1)' }}>
+                <div style={{ fontSize: '2.5rem', color: '#eab308', marginBottom: '12px' }}>
+                  {ml.logro.icono === 'FaMedal' && <FaMedal />}
+                  {ml.logro.icono === 'FaStar' && <FaStar />}
+                  {ml.logro.icono === 'FaTrophy' && <FaTrophy />}
+                </div>
+                <h4 style={{ margin: '0 0 8px 0', color: '#854d0e', fontSize: '0.95rem' }}>{ml.logro.nombre}</h4>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: '#a16207' }}>{ml.logro.descripcion}</p>
+                <small style={{ marginTop: '10px', fontSize: '0.65rem', color: '#ca8a04' }}>Obtenido: {formatDate(ml.fecha_obtenido)}</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* SECCIÓN DE POSTULACIÓN A MENTOR (Sólo estudiantes) */}
         {user.roles.includes('estudiante') && !user.roles.includes('mentor') && (
           <div className="card" style={styles.detailsCard}>
             <h3 style={styles.sectionTitle}>Quiero ser Mentor</h3>
@@ -222,7 +260,6 @@ const Profile = () => {
             )}
           </div>
         )}
-      </div>
     </div>
   );
 };
