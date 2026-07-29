@@ -1074,6 +1074,7 @@ async def websocket_chat(websocket: WebSocket, sesion_id: int, cuenta_id: int, d
             data = await websocket.receive_text()
             
             # 3. Save message to DB
+            set_audit_context(db, cuenta_id, websocket)
             nuevo_mensaje = MensajeSesion(
                 sesion_id=sesion_id,
                 remitente_id=cuenta_id,
