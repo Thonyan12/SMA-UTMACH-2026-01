@@ -75,7 +75,7 @@ Construido para ser increíblemente veloz, responsivo y visualmente atractivo.
 - **SMTP lib**: Para envíos de correos (2FA, reportes, recuperación).
 
 ### Base de Datos (Oracle DB)
-- **Oracle Database 21c (XE)**.
+- **Oracle Database 19c**.
 - **PL/SQL Integrado**: Uso intensivo de *Triggers* y *Constraints* para validación a nivel de base de datos (Ej: Roles no duplicados, historial de auditoría automático, validación de tipos de notificaciones).
 
 ---
