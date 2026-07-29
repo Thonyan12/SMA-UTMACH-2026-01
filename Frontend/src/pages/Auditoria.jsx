@@ -64,6 +64,29 @@ const Auditoria = () => {
     }
   };
 
+  const renderDetallesAmigables = (jsonStr) => {
+    if (!jsonStr) return <span style={{ color: 'var(--text-muted)' }}>Sin detalles</span>;
+    try {
+      const obj = JSON.parse(jsonStr);
+      return (
+        <ul style={{ listStyleType: 'none', padding: 0, margin: 0 }}>
+          {Object.entries(obj).map(([key, value]) => (
+            <li key={key} style={{ padding: '8px 0', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <strong style={{ minWidth: '140px', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
+                {key.replace(/_/g, ' ')}:
+              </strong>
+              <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>
+                {value === 'N/A' || value === null || value === '' ? <em style={{color: 'var(--text-muted)', fontWeight: 'normal'}}>No aplica</em> : String(value).toUpperCase()}
+              </span>
+            </li>
+          ))}
+        </ul>
+      );
+    } catch (e) {
+      return <span>{jsonStr}</span>;
+    }
+  };
+
   const getActionColor = (accion) => {
     if (accion.toUpperCase() === 'INSERT') return 'var(--success)';
     if (accion.toUpperCase() === 'UPDATE') return 'var(--warning)';
@@ -163,20 +186,29 @@ const Auditoria = () => {
                       <tr style={{ backgroundColor: '#fdfdfd' }}>
                         <td colSpan="7" style={{ padding: '20px', borderBottom: '2px solid var(--border-color)' }}>
                           <p style={{ margin: '0 0 15px 0', color: 'var(--text-secondary)' }}><strong>Descripción:</strong> {item.descripcion}</p>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                          {item.detalles_json ? (
                             <div>
-                              <h5 style={{ margin: '0 0 10px 0', color: 'var(--danger)', fontSize: '0.9rem' }}>Datos Anteriores</h5>
-                              <pre style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.85rem', overflowX: 'auto', margin: 0, color: 'var(--text-primary)' }}>
-                                {formatJSON(item.datos_anteriores)}
-                              </pre>
+                              <h5 style={{ margin: '0 0 10px 0', color: 'var(--accent-primary)', fontSize: '0.9rem' }}>Detalles del Cambio</h5>
+                              <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.9rem' }}>
+                                {renderDetallesAmigables(item.detalles_json)}
+                              </div>
                             </div>
-                            <div>
-                              <h5 style={{ margin: '0 0 10px 0', color: 'var(--success)', fontSize: '0.9rem' }}>Datos Nuevos</h5>
-                              <pre style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.85rem', overflowX: 'auto', margin: 0, color: 'var(--text-primary)' }}>
-                                {formatJSON(item.datos_nuevos)}
-                              </pre>
+                          ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                              <div>
+                                <h5 style={{ margin: '0 0 10px 0', color: 'var(--danger)', fontSize: '0.9rem' }}>Datos Anteriores</h5>
+                                <pre style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.85rem', overflowX: 'auto', margin: 0, color: 'var(--text-primary)' }}>
+                                  {formatJSON(item.datos_anteriores)}
+                                </pre>
+                              </div>
+                              <div>
+                                <h5 style={{ margin: '0 0 10px 0', color: 'var(--success)', fontSize: '0.9rem' }}>Datos Nuevos</h5>
+                                <pre style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.85rem', overflowX: 'auto', margin: 0, color: 'var(--text-primary)' }}>
+                                  {formatJSON(item.datos_nuevos)}
+                                </pre>
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </td>
                       </tr>
                     )}

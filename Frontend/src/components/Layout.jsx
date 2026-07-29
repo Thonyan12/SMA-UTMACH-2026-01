@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaHome, FaCalendarAlt, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck, FaUserCircle, FaUserTie, FaClock, FaUsers, FaIdCardAlt, FaShieldAlt } from 'react-icons/fa';
+import { FaHome, FaCalendarAlt, FaSignOutAlt, FaClipboardList, FaBars, FaTimes, FaBell, FaCheck, FaUserCircle, FaUserTie, FaClock, FaUsers, FaIdCardAlt, FaShieldAlt, FaArrowUp } from 'react-icons/fa';
 import api from '../api/axios';
 import { Toaster } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
@@ -13,6 +13,22 @@ const Layout = () => {
   const [notificaciones, setNotificaciones] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const notifRef = useRef(null);
+  const mainContentRef = useRef(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const handleScroll = (e) => {
+    if (e.target.scrollTop > 300) {
+      setShowScrollTop(true);
+    } else {
+      setShowScrollTop(false);
+    }
+  };
+
+  const scrollToTop = () => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const isAdmin = user?.roles?.includes('administrador');
   const isEstudiante = user?.roles?.includes('estudiante');
@@ -90,7 +106,7 @@ const Layout = () => {
   const unreadCount = notificaciones.filter(n => n.leido === 0).length;
 
   return (
-    <div className="layout-container" style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
+    <div className="layout-container" style={{ display: 'flex', height: '100vh', backgroundColor: 'var(--bg-primary)' }}>
       <Toaster position="top-right" />
       
       {/* Sidebar Sobrio e Institucional */}
@@ -150,34 +166,8 @@ const Layout = () => {
           })}
         </nav>
 
-        <div style={{ padding: '24px 16px', borderTop: '1px solid var(--border-color)' }}>
-          <button 
-            onClick={logout}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 16px',
-              borderRadius: '6px',
-              color: 'var(--text-secondary)',
-              backgroundColor: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1rem'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-              e.currentTarget.style.color = 'var(--danger)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = 'var(--text-secondary)';
-            }}
-          >
-            <span style={{ fontSize: '1.1rem' }}><FaSignOutAlt /></span>
-            Cerrar Sesión
-          </button>
+        <div style={{ padding: '24px 16px', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>SMA UTMACH &copy; 2026</p>
         </div>
       </aside>
 
@@ -311,12 +301,64 @@ const Layout = () => {
             }}>
               {user?.nombres ? user.nombres.charAt(0) : (user?.correo ? user.correo.charAt(0) : 'U')}
             </div>
+
+            <button 
+              onClick={logout}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--danger)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '8px',
+                borderRadius: '50%',
+                marginLeft: '8px',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              title="Cerrar sesión"
+            >
+              <FaSignOutAlt size={20} />
+            </button>
           </div>
         </header>
         
-        <div style={{ padding: '32px', flexGrow: 1, overflowY: 'auto' }}>
+        <div ref={mainContentRef} onScroll={handleScroll} style={{ padding: '32px', flexGrow: 1, overflowY: 'auto', position: 'relative' }}>
           {/* El contenido de la ruta actual se renderiza aquí */}
           <Outlet />
+          
+          {showScrollTop && (
+            <button
+              onClick={scrollToTop}
+              style={{
+                position: 'fixed',
+                bottom: '40px',
+                right: '40px',
+                width: '45px',
+                height: '45px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--accent-primary)',
+                color: 'white',
+                border: 'none',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                zIndex: 1000,
+                transition: 'opacity 0.3s, transform 0.2s',
+                opacity: 0.9
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = 1; e.currentTarget.style.transform = 'scale(1.1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = 0.9; e.currentTarget.style.transform = 'scale(1)'; }}
+              title="Volver arriba"
+            >
+              <FaArrowUp />
+            </button>
+          )}
         </div>
       </main>
     </div>

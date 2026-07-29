@@ -1001,7 +1001,8 @@ def obtener_auditoria(
             "accion": hist.accion,
             "descripcion": hist.descripcion,
             "datos_anteriores": hist.datos_anteriores,
-            "datos_nuevos": hist.datos_nuevos
+            "datos_nuevos": hist.datos_nuevos,
+            "detalles_json": hist.detalles_json
         })
     
     return {
