@@ -18,6 +18,7 @@ import Register from './pages/Register';
 import Postulaciones from './pages/Postulaciones';
 import Notificaciones from './pages/Notificaciones';
 import Auditoria from './pages/Auditoria';
+import SalaSesion from './pages/SalaSesion';
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
               <Route path="postulaciones" element={<Postulaciones />} />
               <Route path="notificaciones" element={<Notificaciones />} />
               <Route path="auditoria" element={<Auditoria />} />
+              <Route path="sala/:id" element={<SalaSesion />} />
             </Route>
           </Route>
 

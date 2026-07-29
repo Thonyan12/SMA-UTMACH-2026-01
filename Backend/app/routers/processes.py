@@ -1,5 +1,5 @@
 import re
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 from sqlalchemy.exc import DatabaseError
@@ -8,7 +8,8 @@ from typing import List, Optional
 from app.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.processes import (
-    SolicitudMentoria, SesionMentoria, Calificacion, Notificacion, HistorialCambio, PostulacionMentor
+    SolicitudMentoria, SesionMentoria, Calificacion, Notificacion, HistorialCambio, PostulacionMentor,
+    MensajeSesion, RecursoSesion, ReporteSesion
 )
 from app.models.actors import Estudiante, Mentor, MentorEspecialidad, DisponibilidadMentor
 from app.models.academic import PerfilAcademico, Carrera
@@ -20,13 +21,53 @@ from app.schemas.processes import (
     CalificacionCreate, CalificacionUpdate, CalificacionResponse,
     NotificacionCreate, NotificacionUpdate, NotificacionResponse,
     HistorialCambioCreate, HistorialCambioUpdate, HistorialCambioResponse,
-    PostulacionMentorCreate, PostulacionMentorResponse
+    PostulacionMentorCreate, PostulacionMentorResponse,
+    MensajeSesionCreate, MensajeSesionResponse,
+    RecursoSesionCreate, RecursoSesionResponse,
+    ReporteSesionCreate, ReporteSesionResponse
 )
 from app.services.email_service import send_email
 from datetime import datetime
 from pydantic import BaseModel
 
 router = APIRouter()
+ws_router = APIRouter()
+
+# ==========================================
+# WebSocket Manager (Chat)
+# ==========================================
+class ConnectionManager:
+    def __init__(self):
+        # Dictionary to hold active connections per session: {sesion_id: {websocket: cuenta_id}}
+        self.active_connections: dict[int, dict[WebSocket, int]] = {}
+
+    async def connect(self, websocket: WebSocket, sesion_id: int, cuenta_id: int):
+        await websocket.accept()
+        if sesion_id not in self.active_connections:
+            self.active_connections[sesion_id] = {}
+        self.active_connections[sesion_id][websocket] = cuenta_id
+
+    def disconnect(self, websocket: WebSocket, sesion_id: int):
+        if sesion_id in self.active_connections:
+            if websocket in self.active_connections[sesion_id]:
+                del self.active_connections[sesion_id][websocket]
+            if not self.active_connections[sesion_id]:
+                del self.active_connections[sesion_id]
+
+    async def broadcast(self, message: str, sesion_id: int):
+        if sesion_id in self.active_connections:
+            for connection in self.active_connections[sesion_id].keys():
+                try:
+                    await connection.send_text(message)
+                except Exception:
+                    pass
+                    
+    def is_user_connected(self, sesion_id: int, cuenta_id: int) -> bool:
+        if sesion_id in self.active_connections:
+            return cuenta_id in self.active_connections[sesion_id].values()
+        return False
+
+manager = ConnectionManager()
 
 # ==========================================
 # Funciones Auxiliares para Notificaciones
@@ -544,6 +585,13 @@ def delete_solicitud_mentoria(id: int, db: Session = Depends(get_db)):
 def get_sesiones_mentoria(db: Session = Depends(get_db)):
     return db.query(SesionMentoria).all()
 
+@router.get("/sesiones-mentoria/{id}", response_model=SesionMentoriaResponse)
+def get_sesion_mentoria_by_id(id: int, db: Session = Depends(get_db)):
+    db_item = db.query(SesionMentoria).filter(SesionMentoria.id == id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Sesion no encontrada")
+    return db_item
+
 @router.post("/sesiones-mentoria/")
 def create_sesion_mentoria(item: SesionMentoriaCreate, request: Request, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
     set_audit_context(db, current_user.id, request)
@@ -1012,5 +1060,124 @@ def obtener_auditoria(
         "data": auditoria_list
     }
 
+# ==========================================
+# Sala de Sesión (Chat, Recursos, Reportes)
+# ==========================================
 
-    return {"message": f"Postulación {resolucion.accion}da exitosamente"}
+@ws_router.websocket("/ws/chat/{sesion_id}/{cuenta_id}")
+async def websocket_chat(websocket: WebSocket, sesion_id: int, cuenta_id: int, db: Session = Depends(get_db)):
+    # 1. Connect
+    await manager.connect(websocket, sesion_id, cuenta_id)
+    try:
+        while True:
+            # 2. Wait for messages from this client
+            data = await websocket.receive_text()
+            
+            # 3. Save message to DB
+            nuevo_mensaje = MensajeSesion(
+                sesion_id=sesion_id,
+                remitente_id=cuenta_id,
+                mensaje=data
+            )
+            db.add(nuevo_mensaje)
+            db.commit()
+            db.refresh(nuevo_mensaje)
+            
+            # 4. Obtener datos de la sesión para notificar al otro usuario
+            sesion = db.query(SesionMentoria).filter(SesionMentoria.id == sesion_id).first()
+            if sesion:
+                solicitud = db.query(SolicitudMentoria).filter(SolicitudMentoria.id == sesion.solicitud_id).first()
+                if solicitud:
+                    # Determinar cuenta_id del otro participante
+                    otro_cuenta_id = None
+                    if cuenta_id == get_cuenta_id_for_estudiante(db, solicitud.estudiante_id):
+                        otro_cuenta_id = get_cuenta_id_for_mentor(db, solicitud.mentor_id)
+                    else:
+                        otro_cuenta_id = get_cuenta_id_for_estudiante(db, solicitud.estudiante_id)
+                    
+                    # 5. Notificar si el otro usuario NO está conectado a la sala
+                    if otro_cuenta_id and not manager.is_user_connected(sesion_id, otro_cuenta_id):
+                        notif = Notificacion(
+                            cuenta_id=otro_cuenta_id,
+                            tipo="sistema",
+                            titulo=f"Nuevo mensaje en Sesión #{sesion_id}",
+                            mensaje=f"Tienes un nuevo mensaje en la sala virtual. Mensaje: {data[:50]}...",
+                            sesion_id=sesion_id
+                        )
+                        db.add(notif)
+                        db.commit()
+
+            # 6. Broadcast to everyone in the room
+            import json
+            perfil = db.query(Perfil).filter(Perfil.cuenta_id == cuenta_id).first()
+            nombre = f"{perfil.nombres} {perfil.apellidos}" if perfil else f"User {cuenta_id}"
+            
+            payload = {
+                "id": nuevo_mensaje.id,
+                "remitente_id": cuenta_id,
+                "remitente_nombre": nombre,
+                "mensaje": data,
+                "fecha_envio": nuevo_mensaje.fecha_envio.isoformat()
+            }
+            await manager.broadcast(json.dumps(payload), sesion_id)
+            
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, sesion_id)
+
+@router.get("/sesiones/{sesion_id}/mensajes", response_model=List[MensajeSesionResponse])
+def get_mensajes_sesion(sesion_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    mensajes = db.query(MensajeSesion).filter(MensajeSesion.sesion_id == sesion_id).order_by(MensajeSesion.fecha_envio.asc()).all()
+    for m in mensajes:
+        perf = db.query(Perfil).filter(Perfil.cuenta_id == m.remitente_id).first()
+        m.remitente_nombre = f"{perf.nombres} {perf.apellidos}" if perf else "Desconocido"
+    return mensajes
+
+@router.get("/sesiones/{sesion_id}/recursos", response_model=List[RecursoSesionResponse])
+def get_recursos_sesion(sesion_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    recursos = db.query(RecursoSesion).filter(RecursoSesion.sesion_id == sesion_id).order_by(RecursoSesion.fecha_subida.desc()).all()
+    for r in recursos:
+        perf = db.query(Perfil).filter(Perfil.cuenta_id == r.subido_por).first()
+        r.subido_por_nombre = f"{perf.nombres} {perf.apellidos}" if perf else "Desconocido"
+    return recursos
+
+@router.post("/sesiones/{sesion_id}/recursos", response_model=RecursoSesionResponse)
+def crear_recurso_sesion(sesion_id: int, recurso: RecursoSesionCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    set_audit_context(db, current_user["id"])
+    nuevo_recurso = RecursoSesion(
+        sesion_id=sesion_id,
+        subido_por=current_user["id"],
+        nombre_archivo=recurso.nombre_archivo,
+        url_archivo=recurso.url_archivo
+    )
+    db.add(nuevo_recurso)
+    db.commit()
+    db.refresh(nuevo_recurso)
+    return nuevo_recurso
+
+@router.post("/sesiones/{sesion_id}/reportes", response_model=ReporteSesionResponse)
+def crear_reporte_sesion(sesion_id: int, reporte: ReporteSesionCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    set_audit_context(db, current_user["id"])
+    nuevo_reporte = ReporteSesion(
+        sesion_id=sesion_id,
+        reportador_id=current_user["id"],
+        descripcion=reporte.descripcion,
+        estado="pendiente"
+    )
+    db.add(nuevo_reporte)
+    db.commit()
+    db.refresh(nuevo_reporte)
+    
+    # Notificar a administradores
+    admins = db.query(CuentaRol).join(Rol).filter(Rol.nombre == 'administrador').all()
+    for admin in admins:
+        notif = Notificacion(
+            cuenta_id=admin.cuenta_id,
+            tipo="reporte",
+            titulo="Nuevo Reporte de Sesión",
+            mensaje=f"Se ha reportado una incidencia en la sesión #{sesion_id}.",
+            referencia_id=sesion_id
+        )
+        db.add(notif)
+    db.commit()
+    
+    return nuevo_reporte

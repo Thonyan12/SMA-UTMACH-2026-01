@@ -197,15 +197,15 @@ const Auditoria = () => {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                               <div>
                                 <h5 style={{ margin: '0 0 10px 0', color: 'var(--danger)', fontSize: '0.9rem' }}>Datos Anteriores</h5>
-                                <pre style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.85rem', overflowX: 'auto', margin: 0, color: 'var(--text-primary)' }}>
-                                  {formatJSON(item.datos_anteriores)}
-                                </pre>
+                                <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
+                                  {item.datos_anteriores ? renderDetallesAmigables(item.datos_anteriores) : <span style={{ color: 'var(--text-muted)' }}>Ninguno</span>}
+                                </div>
                               </div>
                               <div>
                                 <h5 style={{ margin: '0 0 10px 0', color: 'var(--success)', fontSize: '0.9rem' }}>Datos Nuevos</h5>
-                                <pre style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.85rem', overflowX: 'auto', margin: 0, color: 'var(--text-primary)' }}>
-                                  {formatJSON(item.datos_nuevos)}
-                                </pre>
+                                <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
+                                  {item.datos_nuevos ? renderDetallesAmigables(item.datos_nuevos) : <span style={{ color: 'var(--text-muted)' }}>Ninguno</span>}
+                                </div>
                               </div>
                             </div>
                           )}

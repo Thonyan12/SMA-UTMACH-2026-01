@@ -186,6 +186,62 @@ class HistorialCambioResponse(HistorialCambioBase):
         from_attributes = True
 
 # =======================
+# MensajesSesion
+# =======================
+class MensajeSesionBase(BaseModel):
+    sesion_id: int
+    remitente_id: int
+    mensaje: str
+
+class MensajeSesionCreate(MensajeSesionBase):
+    pass
+
+class MensajeSesionResponse(MensajeSesionBase):
+    id: int
+    fecha_envio: datetime
+    remitente_nombre: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+# =======================
+# RecursosSesion
+# =======================
+class RecursoSesionBase(BaseModel):
+    sesion_id: int
+    subido_por: int
+    nombre_archivo: str
+    url_archivo: str
+
+class RecursoSesionCreate(RecursoSesionBase):
+    pass
+
+class RecursoSesionResponse(RecursoSesionBase):
+    id: int
+    fecha_subida: datetime
+    subido_por_nombre: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+# =======================
+# ReportesSesion
+# =======================
+class ReporteSesionBase(BaseModel):
+    sesion_id: int
+    reportador_id: int
+    descripcion: str
+
+class ReporteSesionCreate(ReporteSesionBase):
+    pass
+
+class ReporteSesionResponse(ReporteSesionBase):
+    id: int
+    estado: str
+    fecha_creacion: datetime
+    reportador_nombre: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+# =======================
 # Directorio
 # =======================
 class DirectorioMentorResponse(BaseModel):

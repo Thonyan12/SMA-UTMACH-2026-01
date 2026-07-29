@@ -30,6 +30,9 @@ app.include_router(academic.router, prefix="/api/academic", tags=["Gestión Acad
 app.include_router(actors.router, prefix="/api/actors", tags=["Actores (Mentores/Estudiantes)"], dependencies=protected_dependency)
 app.include_router(processes.router, prefix="/api/processes", tags=["Procesos de Mentoría"], dependencies=protected_dependency)
 
+# WebSockets (sin dependencias globales para permitir conexión nativa WS)
+app.include_router(processes.ws_router, tags=["WebSockets"])
+
 @app.get("/")
 def root():
     return {"message": "API de Mentorías UTMACH funcionando"}

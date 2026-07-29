@@ -103,3 +103,38 @@ class HistorialCambio(Base):
     detalles_json = Column(Text)
     estado = Column(Integer, default=1, nullable=False)
     fecha_creacion = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+
+class MensajeSesion(Base):
+    __tablename__ = "mensajes_sesion"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    sesion_id = Column(Integer, ForeignKey("sesiones_mentoria.id", ondelete="CASCADE"), nullable=False)
+    remitente_id = Column(Integer, ForeignKey("cuentas.id", ondelete="CASCADE"), nullable=False)
+    mensaje = Column(String(4000), nullable=False)
+    fecha_envio = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+
+    sesion = relationship("SesionMentoria", backref="mensajes")
+    remitente = relationship("Cuenta")
+
+class RecursoSesion(Base):
+    __tablename__ = "recursos_sesion"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    sesion_id = Column(Integer, ForeignKey("sesiones_mentoria.id", ondelete="CASCADE"), nullable=False)
+    subido_por = Column(Integer, ForeignKey("cuentas.id", ondelete="CASCADE"), nullable=False)
+    nombre_archivo = Column(String(500), nullable=False)
+    url_archivo = Column(String(1000), nullable=False)
+    fecha_subida = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+
+    sesion = relationship("SesionMentoria", backref="recursos")
+    subido_por_cuenta = relationship("Cuenta")
+
+class ReporteSesion(Base):
+    __tablename__ = "reportes_sesion"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    sesion_id = Column(Integer, ForeignKey("sesiones_mentoria.id", ondelete="CASCADE"), nullable=False)
+    reportador_id = Column(Integer, ForeignKey("cuentas.id", ondelete="CASCADE"), nullable=False)
+    descripcion = Column(String(4000), nullable=False)
+    estado = Column(String(20), default="pendiente", nullable=False)
+    fecha_creacion = Column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+
+    sesion = relationship("SesionMentoria", backref="reportes")
+    reportador = relationship("Cuenta")

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FaVideo, FaTrashAlt, FaCheck, FaStar } from 'react-icons/fa';
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
@@ -6,6 +7,7 @@ import toast from 'react-hot-toast';
 
 const Agenda = () => {
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [sesiones, setSesiones] = useState([]);
   const [solicitudes, setSolicitudes] = useState([]);
   const [estudiantes, setEstudiantes] = useState([]);
@@ -304,15 +306,13 @@ const Agenda = () => {
               <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
                 {ses.estado_sesion !== 'completada' && (
                   <>
-                    {ses.enlace_teams ? (
-                      <a href={ses.enlace_teams} target="_blank" rel="noreferrer" className="btn-primary" style={{ flex: 1, textDecoration: 'none', textAlign: 'center', fontSize: '0.85rem' }}>
-                        <FaVideo /> Unirse
-                      </a>
-                    ) : (
-                      <button className="btn-secondary" style={{ flex: 1, fontSize: '0.85rem' }} disabled>
-                        Sin Enlace
-                      </button>
-                    )}
+                    <button 
+                      className="btn-primary" 
+                      style={{ flex: 1, fontSize: '0.85rem' }} 
+                      onClick={() => navigate(`/dashboard/sala/${ses.id}`)}
+                    >
+                      Entrar a la Sala
+                    </button>
                     
                     {user?.roles?.includes('mentor') && (
                       <button 
