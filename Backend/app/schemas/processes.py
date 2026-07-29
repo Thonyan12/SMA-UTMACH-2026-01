@@ -253,8 +253,10 @@ class ReporteSesionBase(BaseModel):
     reportador_id: int
     descripcion: str
 
-class ReporteSesionCreate(ReporteSesionBase):
-    pass
+class ReporteSesionCreate(BaseModel):
+    descripcion: str
+    sesion_id: Optional[int] = None
+    reportador_id: Optional[int] = None
 
 class ReporteSesionResponse(ReporteSesionBase):
     id: int

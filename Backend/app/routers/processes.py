@@ -1012,7 +1012,8 @@ def resolver_postulacion(
         if not mentor_existente:
             nuevo_mentor = Mentor(
                 academico_id=pa.id,
-                biografia="Nuevo mentor en el sistema."
+                biografia="Nuevo mentor en el sistema.",
+                estado_aprobacion="aprobado"
             )
             db.add(nuevo_mentor)
         
@@ -1219,11 +1220,11 @@ def crear_recurso_sesion(sesion_id: int, recurso: RecursoSesionCreate, db: Sessi
     return nuevo_recurso
 
 @router.post("/sesiones/{sesion_id}/reportes", response_model=ReporteSesionResponse)
-def crear_reporte_sesion(sesion_id: int, reporte: ReporteSesionCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    set_audit_context(db, current_user["id"])
+def crear_reporte_sesion(sesion_id: int, reporte: ReporteSesionCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    set_audit_context(db, current_user.id)
     nuevo_reporte = ReporteSesion(
         sesion_id=sesion_id,
-        reportador_id=current_user["id"],
+        reportador_id=current_user.id,
         descripcion=reporte.descripcion,
         estado="pendiente"
     )
@@ -1236,10 +1237,10 @@ def crear_reporte_sesion(sesion_id: int, reporte: ReporteSesionCreate, db: Sessi
     for admin in admins:
         notif = Notificacion(
             cuenta_id=admin.cuenta_id,
-            tipo="reporte",
-            titulo="Nuevo Reporte de Sesión",
-            mensaje=f"Se ha reportado una incidencia en la sesión #{sesion_id}.",
-            referencia_id=sesion_id
+            tipo="sistema",
+            titulo="⚠️ Nuevo Reporte de Sesión",
+            mensaje=f"Se ha reportado una incidencia en la sesión #{sesion_id}. Revisa la sección de reportes.",
+            sesion_id=sesion_id
         )
         db.add(notif)
     db.commit()

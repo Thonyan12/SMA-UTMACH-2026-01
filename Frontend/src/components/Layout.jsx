@@ -43,19 +43,22 @@ const Layout = () => {
       items.push({ path: '/dashboard/directorio', label: 'Directorio', icon: <FaUserTie /> });
       items.push({ path: '/dashboard/solicitudes', label: 'Mis Solicitudes', icon: <FaClipboardList /> });
       items.push({ path: '/dashboard/agenda', label: 'Mi Agenda', icon: <FaCalendarAlt /> });
-    } else if (isMentor) {
+    }
+
+    if (isMentor) {
       items.push({ path: '/dashboard/solicitudes', label: 'Solicitudes Entrantes', icon: <FaClipboardList /> });
-      items.push({ path: '/dashboard/agenda', label: 'Mi Agenda', icon: <FaCalendarAlt /> });
+      if (!isEstudiante) {
+        items.push({ path: '/dashboard/agenda', label: 'Mi Agenda', icon: <FaCalendarAlt /> });
+      }
       items.push({ path: '/dashboard/disponibilidad', label: 'Mi Disponibilidad', icon: <FaClock /> });
-    } else {
-      // Default / Admin
+    }
+
+    if (isAdmin) {
       items.push({ path: '/dashboard/solicitudes', label: 'Todas las Solicitudes', icon: <FaClipboardList /> });
       items.push({ path: '/dashboard/agenda', label: 'Agenda Global', icon: <FaCalendarAlt /> });
-      if (isAdmin) {
-        items.push({ path: '/dashboard/postulaciones', label: 'Mentores Postulantes', icon: <FaIdCardAlt /> });
-        items.push({ path: '/dashboard/usuarios', label: 'Gestión Usuarios', icon: <FaUsers /> });
-        items.push({ path: '/dashboard/auditoria', label: 'Auditoría Sistema', icon: <FaShieldAlt /> });
-      }
+      items.push({ path: '/dashboard/postulaciones', label: 'Mentores Postulantes', icon: <FaIdCardAlt /> });
+      items.push({ path: '/dashboard/usuarios', label: 'Gestión Usuarios', icon: <FaUsers /> });
+      items.push({ path: '/dashboard/auditoria', label: 'Auditoría Sistema', icon: <FaShieldAlt /> });
     }
     
     // Add profile to all

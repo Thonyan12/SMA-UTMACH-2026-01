@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { FaPaperPlane, FaLink, FaExclamationTriangle, FaTimes, FaExternalLinkAlt, FaUsers, FaVideo } from 'react-icons/fa';
+import { FaPaperPlane, FaExclamationTriangle, FaTimes, FaUsers, FaVideo } from 'react-icons/fa';
+import api from '../api/axios';
+import toast from 'react-hot-toast';
 
 const SalaSesion = () => {
   const { id } = useParams();
@@ -33,16 +35,12 @@ const SalaSesion = () => {
 
   const fetchData = async () => {
     try {
-      // Usaremos un endpoint para obtener los mensajes anteriores
-      const headers = { 'Authorization': `Bearer ${token}` };
-      
       const [resMsgs, resSesion] = await Promise.all([
-        fetch(`http://127.0.0.1:8000/api/processes/sesiones/${id}/mensajes`, { headers }),
-        fetch(`http://127.0.0.1:8000/api/processes/sesiones-mentoria/${id}`, { headers })
+        api.get(`/processes/sesiones/${id}/mensajes`),
+        api.get(`/processes/sesiones-mentoria/${id}`)
       ]);
-      
-      if (resMsgs.ok) setMensajes(await resMsgs.json());
-      if (resSesion.ok) setSesion(await resSesion.json());
+      setMensajes(resMsgs.data);
+      setSesion(resSesion.data);
     } catch (error) {
       console.error(error);
     }
@@ -68,22 +66,16 @@ const SalaSesion = () => {
   const enviarReporte = async () => {
     if (!reporteDesc.trim()) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/processes/sesiones/${id}/reportes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-          sesion_id: parseInt(id),
-          reportador_id: user.id,
-          descripcion: reporteDesc
-        })
+      await api.post(`/processes/sesiones/${id}/reportes`, {
+        sesion_id: parseInt(id),
+        descripcion: reporteDesc
       });
-      if (res.ok) {
-        alert("Reporte enviado con éxito. Un administrador lo revisará.");
-        setShowReport(false);
-        setReporteDesc('');
-      }
+      toast.success('Reporte enviado. Un administrador lo revisará.');
+      setShowReport(false);
+      setReporteDesc('');
     } catch (error) {
       console.error(error);
+      toast.error('Error al enviar el reporte. Intenta de nuevo.');
     }
   };
 
