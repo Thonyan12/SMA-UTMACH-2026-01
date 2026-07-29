@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { FaEnvelope, FaLock, FaKey, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaEnvelope, FaLock, FaKey, FaEye, FaEyeSlash, FaArrowLeft } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 const Login = () => {
@@ -104,9 +104,27 @@ const Login = () => {
       backgroundColor: 'var(--bg-secondary)',
       padding: '24px'
     }}>
-      <div className="card-panel" style={{ width: '100%', maxWidth: '420px', padding: '40px' }}>
+      <div className="card-panel" style={{ width: '100%', maxWidth: '420px', padding: '40px', position: 'relative' }}>
+        <Link to="/" style={{
+          position: 'absolute',
+          top: '20px',
+          left: '20px',
+          color: 'var(--text-muted)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          textDecoration: 'none',
+          fontSize: '0.9rem',
+          transition: 'color 0.2s',
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
+        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+        >
+          <FaArrowLeft /> Inicio
+        </Link>
+
         <div style={{ textAlign: 'center', marginBottom: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img src="/logo-horizontal-300x99.png" alt="UTMACH Logo" style={{ width: '100%', maxWidth: '220px', marginBottom: '16px' }} />
+          <img src="/logo-horizontal-300x99.png" alt="UTMACH Logo" style={{ width: '100%', maxWidth: '220px', marginBottom: '16px', marginTop: '20px' }} />
           <p style={{ color: 'var(--text-secondary)' }}>
             {step === 1 ? 'Inicia sesión para acceder al sistema' : 'Verificación de dos pasos (Nuevo Dispositivo)'}
           </p>
@@ -267,9 +285,9 @@ const Login = () => {
             </button>
           </form>
         )}
+        </div>
       </div>
-    </div>
-  );
-};
-
-export default Login;
+    );
+  };
+  
+  export default Login;

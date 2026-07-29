@@ -219,6 +219,9 @@ const Landing = () => {
         <p style={{ margin: 0, color: '#8898aa', fontSize: '0.9rem' }}>
           © {new Date().getFullYear()} Universidad Técnica de Machala. Todos los derechos reservados.
         </p>
+        <p style={{ margin: 0, color: '#8898aa', fontSize: '0.85rem' }}>
+          Creado por <a href="https://github.com/thonyan12" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'none', fontWeight: '600' }}>Thonyan12</a>
+        </p>
       </footer>
     </div>
   );
