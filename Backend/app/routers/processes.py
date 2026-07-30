@@ -1013,9 +1013,15 @@ def resolver_postulacion(
             nuevo_mentor = Mentor(
                 academico_id=pa.id,
                 biografia="Nuevo mentor en el sistema.",
-                estado_aprobacion="aprobado"
+                estado_aprobacion="aprobado",
+                aprobado_por=current_user.id,
+                fecha_aprobacion=datetime.utcnow()
             )
             db.add(nuevo_mentor)
+        else:
+            mentor_existente.estado_aprobacion = 'aprobado'
+            mentor_existente.aprobado_por = current_user.id
+            mentor_existente.fecha_aprobacion = datetime.utcnow()
         
         cuenta_rol_existente = db.query(CuentaRol).filter(CuentaRol.cuenta_id == cuenta.id, CuentaRol.rol_id == 2).first()
         if not cuenta_rol_existente:
