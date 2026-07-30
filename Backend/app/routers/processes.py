@@ -1076,6 +1076,8 @@ def obtener_auditoria(
     limit: int = 20, 
     fecha_inicio: Optional[str] = None, 
     fecha_fin: Optional[str] = None,
+    accion: Optional[str] = None,
+    tabla_nombre: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(
@@ -1087,8 +1089,11 @@ def obtener_auditoria(
     if fecha_inicio:
         query = query.filter(HistorialCambio.fecha_creacion >= datetime.fromisoformat(fecha_inicio))
     if fecha_fin:
-        # Añadir 23:59:59 si solo es fecha (manejo simple, asume YYYY-MM-DD o formato ISO)
         query = query.filter(HistorialCambio.fecha_creacion <= datetime.fromisoformat(fecha_fin))
+    if accion:
+        query = query.filter(HistorialCambio.accion.ilike(accion))
+    if tabla_nombre:
+        query = query.filter(TablasSistema.nombre.ilike(tabla_nombre))
 
     total = query.count()
     resultados = query.order_by(HistorialCambio.fecha_creacion.desc()).offset(skip).limit(limit).all()
@@ -1097,7 +1102,7 @@ def obtener_auditoria(
     # Cache perfiles para evitar consultas repetitivas N+1
     perfiles_cache = {}
 
-    for hist, tabla_nombre in resultados:
+    for hist, t_nombre in resultados:
         usuario_nombre = "Sistema"
         if hist.cuenta_id:
             if hist.cuenta_id in perfiles_cache:
@@ -1106,29 +1111,59 @@ def obtener_auditoria(
                 perf = db.query(Perfil).filter(Perfil.cuenta_id == hist.cuenta_id).first()
                 if perf:
                     usuario_nombre = f"{perf.nombres} {perf.apellidos}"
-                else:
-                    usuario_nombre = f"Cuenta ID: {hist.cuenta_id}"
                 perfiles_cache[hist.cuenta_id] = usuario_nombre
-        
+
         auditoria_list.append({
             "id": hist.id,
-            "fecha": hist.fecha_creacion,
-            "usuario": usuario_nombre,
-            "ip": hist.ip_origen,
-            "tabla": tabla_nombre or f"Tabla ID: {hist.tabla_id}",
+            "tabla": t_nombre or f"ID:{hist.tabla_id}",
+            "registro_id": hist.registro_id,
             "accion": hist.accion,
-            "descripcion": hist.descripcion,
             "datos_anteriores": hist.datos_anteriores,
             "datos_nuevos": hist.datos_nuevos,
-            "detalles_json": hist.detalles_json
+            "descripcion": hist.descripcion,
+            "detalles_json": hist.detalles_json,
+            "usuario": usuario_nombre,
+            "ip": hist.ip_origen,
+            "db_user": hist.db_user,
+            "fecha": hist.fecha_creacion.isoformat()
         })
-    
+
     return {
         "total": total,
-        "skip": skip,
-        "limit": limit,
         "data": auditoria_list
     }
+
+@router.get("/auditoria/stats")
+def obtener_auditoria_stats(db: Session = Depends(get_db)):
+    # 1. Distribución de acciones
+    acciones_raw = db.query(
+        HistorialCambio.accion, 
+        func.count(HistorialCambio.id).label('total')
+    ).group_by(HistorialCambio.accion).all()
+    
+    acciones_stats = [{"name": acc.upper(), "value": total} for acc, total in acciones_raw]
+
+    # 2. Actividad por tabla
+    tablas_raw = db.query(
+        TablasSistema.nombre,
+        func.count(HistorialCambio.id).label('total')
+    ).join(
+        HistorialCambio, TablasSistema.id == HistorialCambio.tabla_id
+    ).group_by(TablasSistema.nombre).order_by(func.count(HistorialCambio.id).desc()).limit(10).all()
+    
+    tablas_stats = [{"name": nombre, "total": total} for nombre, total in tablas_raw]
+    
+    return {
+        "acciones": acciones_stats,
+        "tablas": tablas_stats
+    }
+
+@router.get("/auditoria/tablas")
+def obtener_tablas_auditoria(db: Session = Depends(get_db)):
+    tablas = db.query(TablasSistema.nombre).order_by(TablasSistema.nombre).all()
+    return [t[0] for t in tablas]
+
+
 
 # ==========================================
 # Sala de Sesión (Chat, Recursos, Reportes)
