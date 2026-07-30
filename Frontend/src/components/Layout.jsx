@@ -142,7 +142,7 @@ const Layout = () => {
             const isActive = location.pathname === item.path;
             return (
               <Link 
-                key={item.path} 
+                key={`${item.path}-${item.label}`} 
                 to={item.path}
                 style={{
                   display: 'flex',

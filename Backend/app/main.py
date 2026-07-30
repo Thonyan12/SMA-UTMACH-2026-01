@@ -1,4 +1,6 @@
-from fastapi import FastAPI, Depends, HTTPException
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -6,8 +8,11 @@ from app.database import get_db
 
 from app.routers import catalogs, users, academic, actors, processes, auth
 from app.core.dependencies import get_current_user
+from app.core.limiter import limiter
 
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configuración de CORS para permitir al frontend comunicarse con la API
 app.add_middleware(

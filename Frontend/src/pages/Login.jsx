@@ -51,11 +51,21 @@ const Login = () => {
       }
     } catch (err) {
       if (err.response && err.response.status === 401) {
-        setError('Credenciales incorrectas. Verifica tu correo y contraseña.');
+        const msg = 'Credenciales incorrectas. Verifica tu correo y contraseña.';
+        setError(msg);
+        toast.error(msg);
       } else if (err.response && err.response.status === 400) {
-        setError(err.response.data.detail || 'Error de validación');
+        const msg = err.response.data.detail || 'Error de validación';
+        setError(msg);
+        toast.error(msg);
+      } else if (err.response && err.response.status === 429) {
+        const msg = 'Demasiados intentos. Por favor, espera 5 minutos por seguridad.';
+        setError(msg);
+        toast.error(msg);
       } else {
-        setError('Error al conectar con el servidor. Intenta de nuevo más tarde.');
+        const msg = 'Error al conectar con el servidor. Intenta de nuevo más tarde.';
+        setError(msg);
+        toast.error(msg);
       }
     } finally {
       setIsLoading(false);

@@ -1,5 +1,5 @@
 from datetime import timedelta, datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
 
@@ -9,8 +9,11 @@ from app.models.actors import Estudiante, Mentor
 from app.models.academic import PerfilAcademico, Carrera
 from app.schemas.auth import Token, UserRegister, AuthMeResponse, ForgotPasswordRequest, ResetPasswordRequest, Verify2FARequest, VerifyRegisterRequest
 from app.schemas.users import CuentaResponse
-from app.core.security import verify_password, get_password_hash, create_access_token
+from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token
 from app.core.dependencies import get_current_user
+from app.core.limiter import limiter
+from jose import jwt, JWTError
+from app.core.config import settings
 from app.models.security import CodigoVerificacion
 from app.services.email_service import send_email
 import random
@@ -21,7 +24,14 @@ router = APIRouter()
 
 
 @router.post("/login", response_model=Token)
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), x_device_id: str = Header(default=None), db: Session = Depends(get_db)):
+@limiter.limit("5/5minutes")
+def login_for_access_token(
+    request: Request,
+    response: Response, 
+    form_data: OAuth2PasswordRequestForm = Depends(), 
+    x_device_id: str = Header(default=None), 
+    db: Session = Depends(get_db)
+):
     user = db.query(Cuenta).filter(Cuenta.correo == form_data.username).first()
     
     if not user or not verify_password(form_data.password, user.password_hash):
@@ -74,10 +84,19 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), x_d
     db.commit()
         
     access_token = create_access_token(data={"sub": user.correo})
+    refresh_token = create_refresh_token(data={"sub": user.correo})
+    
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60
+    )
     return {"access_token": access_token, "token_type": "bearer", "requires_2fa": False}
 
 @router.post("/verify-2fa", response_model=Token)
-def verify_2fa(req: Verify2FARequest, db: Session = Depends(get_db)):
+def verify_2fa(req: Verify2FARequest, response: Response, db: Session = Depends(get_db)):
     user = db.query(Cuenta).filter(Cuenta.id == req.cuenta_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
@@ -98,7 +117,42 @@ def verify_2fa(req: Verify2FARequest, db: Session = Depends(get_db)):
     db.commit()
     
     access_token = create_access_token(data={"sub": user.correo})
+    refresh_token = create_refresh_token(data={"sub": user.correo})
+    
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60
+    )
     return {"access_token": access_token, "token_type": "bearer", "requires_2fa": False}
+
+@router.post("/refresh", response_model=Token)
+def refresh_token(response: Response, refresh_token: str = Cookie(None), db: Session = Depends(get_db)):
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token no encontrado")
+        
+    try:
+        payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        correo: str = payload.get("sub")
+        token_type: str = payload.get("type")
+        if correo is None or token_type != "refresh":
+            raise HTTPException(status_code=401, detail="Refresh token inválido")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Refresh token inválido o expirado")
+        
+    user = db.query(Cuenta).filter(Cuenta.correo == correo).first()
+    if not user or user.estado != 1:
+        raise HTTPException(status_code=401, detail="Usuario inactivo o no existe")
+        
+    new_access_token = create_access_token(data={"sub": user.correo})
+    return {"access_token": new_access_token, "token_type": "bearer", "requires_2fa": False}
+
+@router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie("refresh_token")
+    return {"message": "Sesión cerrada correctamente"}
 
 @router.post("/forgot-password")
 def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
